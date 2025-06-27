@@ -1,10 +1,10 @@
 import React from 'react';
-import { TrendingUp, Bell, Star, BarChart2 } from 'lucide-react';
+import { TrendingUp, Bell, Star, BarChart2, Briefcase, Globe } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const navItems = [
-  { name: 'Portfolio', icon: TrendingUp, to: '/' },
-  { name: 'Market Stocks', icon: TrendingUp, to: '/stocks' },
+  { name: 'Portfolio', icon: Briefcase, to: '/' },
+  { name: 'Market Stocks', icon: Globe, to: '/stocks' },
   { name: 'Alerts', icon: Bell, to: '/alerts' },
   { name: 'Watchlist', icon: Star, to: '/watchlist' },
   { name: 'Analytics', icon: BarChart2, to: '/analytics' },

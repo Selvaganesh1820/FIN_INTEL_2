@@ -415,6 +415,30 @@ function PortfolioPage({ portfolioHoldings, setPortfolioHoldings }: {
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white font-sans">Portfolio Holdings</h2>
                   <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-semibold">{filteredAndSortedStocks.length} positions</span>
                 </div>
+                {/* Filter and Sort Controls */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <label className="text-xs text-gray-500 dark:text-gray-400 font-semibold">Sector:</label>
+                  <select
+                    className="px-2 py-1 rounded border text-xs bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                    value={sectorFilter}
+                    onChange={e => setSectorFilter(e.target.value)}
+                  >
+                    <option value="all">All</option>
+                    {uniqueSectors.map(sector => (
+                      <option key={sector} value={sector}>{sector}</option>
+                    ))}
+                  </select>
+                  <label className="text-xs text-gray-500 dark:text-gray-400 font-semibold ml-2">Sort by:</label>
+                  <select
+                    className="px-2 py-1 rounded border text-xs bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                    value={sortBy}
+                    onChange={e => setSortBy(e.target.value as 'symbol' | 'price' | 'change')}
+                  >
+                    <option value="symbol">Symbol</option>
+                    <option value="price">Price</option>
+                    <option value="change">Change %</option>
+                  </select>
+                </div>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 mb-8 p-4">
                 <div className="overflow-x-auto">
@@ -430,8 +454,9 @@ function PortfolioPage({ portfolioHoldings, setPortfolioHoldings }: {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
-                      {validHoldings.map((holding: PortfolioHolding, index: number) => {
-                        const stock = stockMap.get(holding.symbol);
+                      {filteredAndSortedStocks.map((stock, index) => {
+                        const holding = portfolioHoldings.find(h => h.symbol === stock.symbol);
+                        if (!holding) return null;
                         const positionValue = stock.price * holding.shares;
                         const changePositive = stock.change >= 0;
                         return (

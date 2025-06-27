@@ -2,4 +2,11 @@ fastapi
 uvicorn
 requests
 vaderSentiment
-python-dotenv 
+python-dotenv
+transformers
+torch
+numpy
+pandas
+scikit-learn
+textblob
+nltk 

@@ -211,35 +211,6 @@ export default function StockDetail() {
         </div>
       </div>
 
-      {/* Sentiment Analysis always visible at top */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">Sentiment Analysis</h3>
-        {sentimentLoading ? (
-          <LoadingSpinner />
-        ) : sentiment ? (
-          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 mb-2">
-            {getSentimentIcon(sentiment.sentiment, sentiment.color)}
-            <span className="font-bold text-lg" style={{ color: sentiment.color }}>{sentiment.sentiment}</span>
-            <span className="text-sm text-gray-500 dark:text-gray-400">Impact Score: <span className="font-semibold text-gray-900 dark:text-white">{sentiment.impactScore}</span></span>
-          </div>
-        ) : (
-          <span className="text-red-500 dark:text-red-400">No sentiment data available or backend not reachable.</span>
-        )}
-        {sentiment && sentiment.sampleTexts && (
-          <ul className="mt-2 text-sm text-gray-700 dark:text-gray-300 list-disc list-inside">
-            {sentiment.sampleTexts.length > 0 ? (
-              sentiment.sampleTexts.map((txt: string, i: number) => <li key={i}>{txt}</li>)
-            ) : (
-              <li>
-                {sentiment.sentiment === 'Positive' && 'Recent news sentiment is positive overall.'}
-                {sentiment.sentiment === 'Negative' && 'Recent news sentiment is negative overall.'}
-                {sentiment.sentiment === 'Neutral' && 'Recent news sentiment is neutral.'}
-              </li>
-            )}
-          </ul>
-        )}
-      </div>
-
       <div className="mb-6 px-8 pt-4">
         <div className="flex space-x-4 border-b border-gray-200 dark:border-gray-700 mb-4">
           {TABS.map(t => (
@@ -284,28 +255,38 @@ export default function StockDetail() {
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
             {newsLoading ? <LoadingSpinner /> : newsError ? <div className="text-red-600 dark:text-red-400">{newsError}</div> : (
               news.length === 0 ? <div className="text-gray-500 dark:text-gray-300 col-span-2">No recent news found.</div> :
-              news.map((n, i) => (
-                <a
-                  key={i}
-                  href={n.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow hover:shadow-lg transition-all duration-200 group overflow-hidden hover:-translate-y-1"
-                >
-                  <div className="flex items-center gap-4 p-4">
-                    {n.image && <img src={n.image} alt="news" className="w-16 h-16 object-cover rounded bg-gray-100 dark:bg-gray-900" />}
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors line-clamp-2">{n.headline}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-300 mt-1">{n.source} • {new Date(n.datetime * 1000).toLocaleDateString()}</div>
+              news.map((n, i) => {
+                // Placeholder sentiment data for each news item
+                const sentiment = i % 3 === 0 ? { sentiment: 'Positive', color: 'green', icon: '🔼', impactScore: 0.8 } : i % 3 === 1 ? { sentiment: 'Negative', color: 'red', icon: '🔽', impactScore: 0.4 } : { sentiment: 'Neutral', color: 'grey', icon: '⚪', impactScore: 0.2 };
+                return (
+                  <a
+                    key={i}
+                    href={n.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block rounded-2xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 shadow hover:shadow-lg transition-all duration-200 group overflow-hidden hover:-translate-y-1"
+                  >
+                    <div className="flex items-center gap-4 p-4">
+                      {n.image && <img src={n.image} alt="news" className="w-16 h-16 object-cover rounded bg-gray-100 dark:bg-gray-900" />}
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors line-clamp-2">{n.headline}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-300 mt-1">{n.source} • {new Date(n.datetime * 1000).toLocaleDateString()}</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="px-4 pb-4 text-sm text-gray-700 dark:text-gray-200 line-clamp-3">{n.summary}</div>
-                  <div className="flex items-center justify-between px-4 pb-4">
-                    <span className="text-xs text-gray-500 dark:text-gray-300">Click to read more</span>
-                    <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-full text-xs font-semibold">Read</span>
-                  </div>
-                </a>
-              ))
+                    {/* Per-news sentiment block */}
+                    <div className="flex items-center gap-3 px-4 pb-2">
+                      {/* <span className="text-2xl" role="img" aria-label={sentiment.sentiment}>{sentiment.icon}</span> */}
+                      <span className="font-bold text-base" style={{ color: sentiment.color }}>{sentiment.sentiment}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">Impact Score: <span className="font-semibold text-gray-900 dark:text-white">{sentiment.impactScore}</span></span>
+                    </div>
+                    <div className="px-4 pb-4 text-sm text-gray-700 dark:text-gray-200 line-clamp-3">{n.summary}</div>
+                    <div className="flex items-center justify-between px-4 pb-4">
+                      <span className="text-xs text-gray-500 dark:text-gray-300">Click to read more</span>
+                      <span className="inline-block px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-full text-xs font-semibold">Read</span>
+                    </div>
+                  </a>
+                );
+              })
             )}
           </div>
         )}

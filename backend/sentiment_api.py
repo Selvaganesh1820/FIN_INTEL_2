@@ -65,6 +65,7 @@ def get_sentiment(symbol: str):
         "sentiment": SENTIMENT_MAP[sentiment]["label"],
         "icon": SENTIMENT_MAP[sentiment]["icon"],
         "color": SENTIMENT_MAP[sentiment]["color"],
+        "sentimentScore": round(avg_score, 3),
         "impactScore": impactScore,
         "sampleTexts": texts
     }
