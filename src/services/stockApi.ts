@@ -1,5 +1,8 @@
 import axios from 'axios';
 
+// TODO: Fetch live news from MarketWatch or another stock news website and display it in the app.
+// Current implementation uses available APIs; consider scraping or using alternative APIs for more comprehensive news coverage.
+
 // Using Alpha Vantage API (free tier: 25 requests per day)
 export const API_KEY = 'XE820FF3LWH9QI4E'; // Using demo key for development
 const BASE_URL = 'https://www.alphavantage.co/query';
@@ -29,6 +32,19 @@ export interface NewsItem {
   source: string;
   url?: string;
 }
+
+const DEMO_STOCKS = [
+  { symbol: 'AAPL', name: 'Apple Inc.' },
+  { symbol: 'MSFT', name: 'Microsoft Corporation' },
+  { symbol: 'GOOGL', name: 'Alphabet Inc.' },
+  { symbol: 'AMZN', name: 'Amazon.com Inc.' },
+  { symbol: 'TSLA', name: 'Tesla Inc.' },
+  { symbol: 'NVDA', name: 'NVIDIA Corporation' },
+  { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
+  { symbol: 'AMD', name: 'Advanced Micro Devices' },
+  { symbol: 'META', name: 'Meta Platforms Inc.' },
+  { symbol: 'NFLX', name: 'Netflix Inc.' }
+];
 
 // Fetch real-time stock data
 export const fetchStockData = async (symbol: string): Promise<StockData> => {
@@ -154,7 +170,17 @@ export const searchStocks = async (query: string): Promise<StockData[]> => {
       }
       throw new Error('No matches from Finnhub');
     } catch (finnhubError) {
-      throw new Error('Both APIs failed for search');
+      // Fallback to demo list
+      return DEMO_STOCKS.filter(stock =>
+        stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
+        stock.name.toLowerCase().includes(query.toLowerCase())
+      ).map(stock => ({
+        symbol: stock.symbol,
+        name: stock.name,
+        price: 0,
+        change: 0,
+        changePercent: 0
+      }));
     }
   }
 };
@@ -223,3 +249,9 @@ const formatTimeAgo = (timestamp: string): string => {
   if (diffInHours < 24) return `${diffInHours} hours ago`;
   return `${Math.floor(diffInHours / 24)} days ago`;
 };
+
+export async function fetchSentiment(symbol: string) {
+  const res = await fetch(`http://127.0.0.1:8000/api/sentiment/${symbol}`);
+  if (!res.ok) throw new Error('Failed to fetch sentiment');
+  return res.json();
+}

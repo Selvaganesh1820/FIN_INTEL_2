@@ -7,7 +7,9 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
 import { API_KEY as ALPHA_VANTAGE_API_KEY } from '../services/stockApi';
-import { Briefcase, Globe, Calendar, DollarSign, TrendingUp, Info, Link as LinkIcon, BarChart2, Users } from 'lucide-react';
+import { Briefcase, Globe, Calendar, DollarSign, TrendingUp, Info, Link as LinkIcon, BarChart2, Users, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { fetchSentiment } from '../services/stockApi';
+import symbolToSector from '../utils/symbolToSector';
 
 const FINNHUB_API_KEY = 'd1e3ff9r01qlt46scf40d1e3ff9r01qlt46scf4g';
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
@@ -61,7 +63,7 @@ export default function StockDetail() {
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState('News');
+  const [tab, setTab] = useState('Overview');
 
   // News
   const [news, setNews] = useState<NewsArticle[]>([]);
@@ -73,6 +75,9 @@ export default function StockDetail() {
   const [analyst, setAnalyst] = useState<AnalystRecommendation | null>(null);
   const [finLoading, setFinLoading] = useState(false);
   const [finError, setFinError] = useState<string | null>(null);
+
+  const [sentiment, setSentiment] = useState<any>(null);
+  const [sentimentLoading, setSentimentLoading] = useState(false);
 
   useEffect(() => {
     if (!symbol) return;
@@ -143,6 +148,26 @@ export default function StockDetail() {
       .finally(() => setFinLoading(false));
   }, [tab, symbol]);
 
+  useEffect(() => {
+    if (!symbol) return;
+    setSentimentLoading(true);
+    fetchSentiment(symbol)
+      .then(setSentiment)
+      .catch(() => setSentiment(null))
+      .finally(() => setSentimentLoading(false));
+  }, [symbol]);
+
+  useEffect(() => {
+    setTab('Overview'); // Always reset to Overview when symbol changes
+  }, [symbol]);
+
+  // Helper for professional sentiment icon
+  const getSentimentIcon = (sentiment: string, color: string) => {
+    if (sentiment === 'Positive') return <ArrowUpRight className="w-8 h-8" style={{ color }} />;
+    if (sentiment === 'Negative') return <ArrowDownRight className="w-8 h-8" style={{ color }} />;
+    return <Minus className="w-8 h-8" style={{ color }} />;
+  };
+
   if (loading) return <LoadingSpinner />;
   if (error) return <div className="p-8 text-center text-red-600 dark:text-red-400">{error}</div>;
   if (!stock) return <div className="p-8 text-center text-gray-600 dark:text-gray-400">No data found.</div>;
@@ -186,6 +211,35 @@ export default function StockDetail() {
         </div>
       </div>
 
+      {/* Sentiment Analysis always visible at top */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">Sentiment Analysis</h3>
+        {sentimentLoading ? (
+          <LoadingSpinner />
+        ) : sentiment ? (
+          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 mb-2">
+            {getSentimentIcon(sentiment.sentiment, sentiment.color)}
+            <span className="font-bold text-lg" style={{ color: sentiment.color }}>{sentiment.sentiment}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">Impact Score: <span className="font-semibold text-gray-900 dark:text-white">{sentiment.impactScore}</span></span>
+          </div>
+        ) : (
+          <span className="text-red-500 dark:text-red-400">No sentiment data available or backend not reachable.</span>
+        )}
+        {sentiment && sentiment.sampleTexts && (
+          <ul className="mt-2 text-sm text-gray-700 dark:text-gray-300 list-disc list-inside">
+            {sentiment.sampleTexts.length > 0 ? (
+              sentiment.sampleTexts.map((txt: string, i: number) => <li key={i}>{txt}</li>)
+            ) : (
+              <li>
+                {sentiment.sentiment === 'Positive' && 'Recent news sentiment is positive overall.'}
+                {sentiment.sentiment === 'Negative' && 'Recent news sentiment is negative overall.'}
+                {sentiment.sentiment === 'Neutral' && 'Recent news sentiment is neutral.'}
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
+
       <div className="mb-6 px-8 pt-4">
         <div className="flex space-x-4 border-b border-gray-200 dark:border-gray-700 mb-4">
           {TABS.map(t => (
@@ -200,22 +254,28 @@ export default function StockDetail() {
         </div>
         {/* Tab Content */}
         {tab === 'Overview' && (
-          <div>
-            <div className="mb-4 text-gray-600 dark:text-gray-300 text-lg font-semibold flex items-center gap-2"><Info className="w-5 h-5" />Company Overview</div>
-            <div className="mb-4">
-              {profile?.description ? (
-                <div className="text-gray-700 dark:text-gray-200 whitespace-pre-line text-base leading-relaxed">
-                  {profile.description.length > 300 ? (
-                    <>
-                      {profile.description.slice(0, 300)}...{' '}
-                      {profile.weburl && (
-                        <a href={profile.weburl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">Read more <LinkIcon className="w-4 h-4" /></a>
-                      )}
-                    </>
-                  ) : profile.description}
-                </div>
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white flex items-center gap-2">Company Overview</h3>
+            <div className="flex flex-col md:flex-row gap-6 items-start md:items-center mb-4">
+              <img
+                src={`https://finnhub.io/api/logo?symbol=${stock.symbol}`}
+                alt={stock.symbol}
+                className="w-16 h-16 rounded bg-gray-100 dark:bg-gray-900 object-contain border border-gray-200 dark:border-gray-700 shadow"
+                onError={e => (e.currentTarget.src = 'https://images.pexels.com/photos/590020/pexels-photo-590020.jpeg?auto=compress&cs=tinysrgb&w=600')}
+              />
+              <div>
+                <div className="font-bold text-2xl text-gray-900 dark:text-white">{stock.name || stock.symbol}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Symbol: <span className="font-mono">{stock.symbol}</span></div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Sector: <span className="font-semibold">{symbolToSector[stock.symbol] || 'N/A'}</span></div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">Current Price: <span className="font-semibold text-gray-900 dark:text-white">${stock.price.toFixed(2)}</span></div>
+              </div>
+            </div>
+            <div className="text-gray-700 dark:text-gray-300 text-base mb-2">
+              {/* Placeholder summary, can be replaced with real company profile */}
+              {profile && profile.finnhubIndustry ? (
+                <span>{profile.finnhubIndustry} company. {profile.weburl && (<a href={profile.weburl} className="text-blue-600 dark:text-blue-400 hover:underline ml-1" target="_blank" rel="noopener noreferrer">Website</a>)} </span>
               ) : (
-                <div className="text-gray-500 dark:text-gray-400">No company description available.</div>
+                <span>This is a leading company in its sector.</span>
               )}
             </div>
           </div>

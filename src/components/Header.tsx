@@ -182,44 +182,6 @@ export default function Header({
             )}
           </div>
           
-          <div className="relative">
-            <button
-              onClick={() => setShowNotif(v => !v)}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 relative"
-              title="Notifications"
-            >
-              <Bell className="w-5 h-5" />
-              {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-900"></span>
-              )}
-            </button>
-            {showNotif && (
-              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                <div className="p-4 border-b border-gray-100 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">Notifications</div>
-                {notifications.length === 0 ? (
-                  <div className="p-4 text-gray-500 dark:text-gray-300">No notifications</div>
-                ) : (
-                  notifications.map(n => (
-                    <a
-                      key={n.id}
-                      href={n.url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-blue-600 dark:text-blue-400">{n.symbol}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-300">{new Date(n.time).toLocaleTimeString()}</span>
-                      </div>
-                      <div className="font-semibold text-gray-900 dark:text-white">{n.title}</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-300">{n.message}</div>
-                    </a>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-          
           <button 
             onClick={onRefresh}
             disabled={isRefreshing}

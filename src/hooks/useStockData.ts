@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchMultipleStocks, fetchMarketNews, searchStocks, StockData, NewsItem } from '../services/stockApi';
 
-// Default list of popular stock symbols (can be made dynamic later)
-const DEFAULT_POPULAR_SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'JPM', 'AMD'];
+// Default list of popular stock symbols (demo-safe, reliable)
+const DEFAULT_POPULAR_SYMBOLS = [
+  'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'JPM', 'AMD'
+];
 
 export const useStockData = () => {
   const [stocks, setStocks] = useState<StockData[]>([]);
@@ -16,7 +18,8 @@ export const useStockData = () => {
       setLoading(true);
       setError(null);
       
-      const stockSymbols = symbols || DEFAULT_POPULAR_SYMBOLS;
+      // Limit to first 25 symbols to avoid API rate limits
+      const stockSymbols = (symbols || DEFAULT_POPULAR_SYMBOLS).slice(0, 25);
       const [stockData, newsData] = await Promise.all([
         fetchMultipleStocks(stockSymbols),
         fetchMarketNews()

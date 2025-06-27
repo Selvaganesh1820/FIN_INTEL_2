@@ -3,16 +3,15 @@ import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import Header from './components/Header';
 import StatsCard from './components/StatsCard';
 import StockItem from './components/StockItem';
-import NewsItem from './components/NewsItem';
 import LoadingSpinner from './components/LoadingSpinner';
 import { useStockData } from './hooks/useStockData';
 // import { Wallet, TrendingUp, TrendingDown, Layers, Filter, ArrowUpDown, AlertCircle, Newspaper, CircleDot, PieChart, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'lucide-react';
 import StockDetail from './components/StockDetail';
 import Sidebar from './components/Sidebar';
 // For icons
-import { Wallet, TrendingUp, TrendingDown, Layers, Filter, ArrowUpDown, AlertCircle, Newspaper, CircleDot, Target, Bell, Star } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Layers, Filter, ArrowUpDown, AlertCircle, Newspaper, CircleDot, Target, Bell, Star, PlusCircle, Trash2 } from 'lucide-react';
 // For charts
-import { PieChart, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { PieChart, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Pie, Cell } from 'recharts';
 import { BarChart2 } from 'lucide-react';
 
 // Reduced portfolio for testing (to avoid API rate limits)
@@ -61,76 +60,89 @@ const getVolatility = (symbol: string) => {
   return 'Low';
 };
 
-// Placeholder pages for sidebar navigation
-function NewsPage() {
-  return (
-    <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-blue-700 dark:text-blue-300 flex items-center gap-3"><Newspaper className="w-7 h-7 animate-bounce" /> Market News</h1>
-      <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 p-8 border border-gray-100 dark:border-gray-700">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Trending Stocks</h2>
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm font-medium">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Symbol</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Headline</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Source</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
-            <tr className="hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"><td className="px-4 py-3 font-bold">AAPL</td><td className="px-4 py-3">Apple Reports Strong Q4 Earnings</td><td className="px-4 py-3">MarketWatch</td></tr>
-            <tr className="hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"><td className="px-4 py-3 font-bold">MSFT</td><td className="px-4 py-3">Azure Revenue Surges 29%</td><td className="px-4 py-3">TechCrunch</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
 function AlertsPage() {
   return (
     <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-green-700 dark:text-green-300 flex items-center gap-3"><Bell className="w-7 h-7 animate-pulse" /> Alerts</h1>
-      <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 p-8 border border-gray-100 dark:border-gray-700">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Recent Notifications</h2>
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm font-medium">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Type</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Message</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Time</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
-            <tr className="hover:bg-green-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"><td className="px-4 py-3">News</td><td className="px-4 py-3">Apple just released a new product!</td><td className="px-4 py-3">2m ago</td></tr>
-            <tr className="hover:bg-green-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"><td className="px-4 py-3">Price</td><td className="px-4 py-3">TSLA dropped 5%</td><td className="px-4 py-3">10m ago</td></tr>
-          </tbody>
-        </table>
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-center gap-3 mb-8">
+          <Bell className="w-8 h-8 text-green-600 dark:text-green-300 animate-pulse" />
+          <h1 className="text-3xl font-bold text-green-700 dark:text-green-300">Alerts</h1>
+        </div>
+        <div className="grid gap-6">
+          {[{
+            type: 'News',
+            message: 'Apple just released a new product!',
+            time: '2m ago',
+            icon: <Newspaper className="w-6 h-6 text-blue-500" />
+          }, {
+            type: 'Price',
+            message: 'TSLA dropped 5%',
+            time: '10m ago',
+            icon: <TrendingDown className="w-6 h-6 text-red-500" />
+          }].map((alert, i) => (
+            <div key={i} className="flex items-center gap-4 bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-100 dark:border-gray-700 p-5">
+              <div>{alert.icon}</div>
+              <div className="flex-1">
+                <div className="font-semibold text-gray-900 dark:text-white">{alert.message}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">{alert.type} • {alert.time}</div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
+
 function WatchlistPage() {
+  const [watchlist, setWatchlist] = React.useState([
+    { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 138.92, change: 1.2 },
+    { symbol: 'NFLX', name: 'Netflix Inc.', price: 456.12, change: -2.5 }
+  ]);
+
+  const handleRemoveWatch = (symbol: string) => {
+    setWatchlist(prev => prev.filter(stock => stock.symbol !== symbol));
+  };
   return (
-    <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-purple-700 dark:text-purple-300 flex items-center gap-3"><Star className="w-7 h-7 animate-bounce" /> Watchlist</h1>
-      <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 p-8 border border-gray-100 dark:border-gray-700">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Your Watchlist</h2>
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm font-medium">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Symbol</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Price</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
-            <tr className="hover:bg-purple-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"><td className="px-4 py-3">GOOGL</td><td className="px-4 py-3">Alphabet Inc.</td><td className="px-4 py-3">$138.92</td></tr>
-            <tr className="hover:bg-purple-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"><td className="px-4 py-3">NFLX</td><td className="px-4 py-3">Netflix Inc.</td><td className="px-4 py-3">$456.12</td></tr>
-          </tbody>
-        </table>
+    <div className="p-4 sm:p-6 md:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center gap-3 mb-8">
+          <Star className="w-8 h-8 text-purple-600 dark:text-purple-300 animate-bounce" />
+          <h1 className="text-3xl font-bold text-purple-700 dark:text-purple-300">Watchlist</h1>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-2 sm:p-4 md:p-6 overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm font-medium">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-gray-900">
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Symbol</th>
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Name</th>
+                <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Price</th>
+                <th className="px-2 sm:px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Change</th>
+                <th className="px-2 sm:px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Action</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
+              {watchlist.map((stock, i) => (
+                <tr key={i} className="hover:bg-purple-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                  <td className="px-2 sm:px-4 py-3 font-bold">{stock.symbol}</td>
+                  <td className="px-2 sm:px-4 py-3">{stock.name}</td>
+                  <td className="px-2 sm:px-4 py-3 text-right">${stock.price.toFixed(2)}</td>
+                  <td className={`px-2 sm:px-4 py-3 text-center font-semibold ${stock.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{stock.change >= 0 ? '+' : ''}{stock.change}%</td>
+                  <td className="px-2 sm:px-4 py-3 text-center">
+                    <button className="border border-blue-500 text-blue-600 bg-white dark:bg-gray-900 rounded-full w-7 h-7 flex items-center justify-center text-base shadow-sm transition-all duration-150 hover:bg-blue-50 dark:hover:bg-blue-800 hover:text-white hover:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400" title="Remove from Watchlist" onClick={() => handleRemoveWatch(stock.symbol)}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 }
+
 function AnalyticsPage() {
   // Example pie chart data
   const data = [
@@ -139,21 +151,58 @@ function AnalyticsPage() {
     { name: 'Healthcare', value: 15 },
     { name: 'Energy', value: 25 },
   ];
+  const COLORS = ['#2563eb', '#16a34a', '#f59e42', '#e11d48'];
   return (
     <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-indigo-700 dark:text-indigo-300 flex items-center gap-3"><BarChart2 className="w-7 h-7 animate-spin" /> Analytics</h1>
-      <div className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 p-8 border border-gray-100 dark:border-gray-700">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Portfolio Allocation</h2>
-        <div className="w-full h-72 flex items-center justify-center">
-          <span className="text-gray-400 dark:text-gray-600">[Pie Chart Placeholder]</span>
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-center gap-3 mb-8">
+          <BarChart2 className="w-8 h-8 text-indigo-600 dark:text-indigo-300 animate-spin" />
+          <h1 className="text-3xl font-bold text-indigo-700 dark:text-indigo-300">Analytics</h1>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-8 flex flex-col items-center">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Portfolio Allocation</h2>
+          <div className="w-full flex flex-col md:flex-row items-center justify-center gap-8">
+            <ResponsiveContainer width={220} height={220}>
+              <PieChart>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={90}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex flex-col gap-2">
+              {data.map((entry, idx) => (
+                <div key={entry.name} className="flex items-center gap-3">
+                  <span className="inline-block w-4 h-4 rounded-full" style={{ background: COLORS[idx % COLORS.length] }}></span>
+                  <span className="text-gray-900 dark:text-white font-medium">{entry.name}</span>
+                  <span className="text-gray-500 dark:text-gray-400">{entry.value}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function PortfolioPage() {
-  const portfolioSymbols = portfolioHoldings.map(h => h.symbol);
+type PortfolioHolding = { symbol: string; shares: number };
+
+function PortfolioPage({ portfolioHoldings, setPortfolioHoldings }: {
+  portfolioHoldings: PortfolioHolding[];
+  setPortfolioHoldings: React.Dispatch<React.SetStateAction<PortfolioHolding[]>>;
+}) {
+  const portfolioSymbols = portfolioHoldings.map((h: PortfolioHolding) => h.symbol);
   const { stocks, news, loading, error, lastUpdated, refreshData, searchForStocks, loadStockData } = useStockData();
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [sortBy, setSortBy] = useState<'symbol' | 'price' | 'change'>('symbol');
@@ -177,6 +226,12 @@ function PortfolioPage() {
     stocks.forEach(stock => map.set(stock.symbol, stock));
     return map;
   }, [stocks]);
+
+  // Only show holdings with valid stock data
+  const validHoldings = portfolioHoldings.filter((holding: PortfolioHolding) => {
+    const stock = stockMap.get(holding.symbol);
+    return stock && !stock.metaError;
+  });
 
   // Calculate portfolio statistics
   const portfolioStats = useMemo(() => {
@@ -219,7 +274,7 @@ function PortfolioPage() {
   const [sectorFilter, setSectorFilter] = useState('all');
 
   // Get unique sectors for filter dropdown
-  const uniqueSectors = Array.from(new Set(portfolioHoldings.map(h => symbolToSector[h.symbol] || 'Other')));
+  const uniqueSectors = Array.from(new Set(portfolioHoldings.map((h: PortfolioHolding) => symbolToSector[h.symbol] || 'Other')));
 
   // Filtered and sorted stocks with sector and text filter
   const filteredAndSortedStocks = useMemo(() => {
@@ -292,6 +347,7 @@ function PortfolioPage() {
 
   // News relevant to portfolio stocks
   const relevantNews = news.filter(n => portfolioHoldings.some(h => h.symbol === n.symbol));
+  const newsToShow = relevantNews.length > 0 ? relevantNews : news;
 
   // Simulate polling for notifications (for header/alerts page)
   useEffect(() => {
@@ -309,6 +365,10 @@ function PortfolioPage() {
     { title: 'Total Return', value: '+1.7%', sub: '+$295.16', icon: Target, color: 'from-green-500 to-green-600', label: '' },
     { title: 'Positions', value: '5', sub: 'Active', icon: Layers, color: 'from-purple-500 to-purple-600', label: '' },
   ];
+
+  const handleRemoveStock = (symbol: string) => {
+    setPortfolioHoldings((prev: PortfolioHolding[]) => prev.filter(h => h.symbol !== symbol));
+  };
 
   if (loading && !stocks.length) {
     return (
@@ -335,7 +395,7 @@ function PortfolioPage() {
         />
         <main className="max-w-7xl mx-auto px-4 py-8">
           {/* Analytics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {analyticsCards.map((card, i) => (
               <div key={i} className="rounded-2xl shadow-lg bg-white dark:bg-gray-800 p-6 flex flex-col gap-2 border border-gray-100 dark:border-gray-700 hover:shadow-2xl transition-all duration-200">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-r ${card.color} shadow-md mb-2`}>
@@ -355,50 +415,6 @@ function PortfolioPage() {
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white font-sans">Portfolio Holdings</h2>
                   <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-semibold">{filteredAndSortedStocks.length} positions</span>
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    value={filterText}
-                    onChange={e => setFilterText(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                  <select
-                    value={sectorFilter}
-                    onChange={e => setSectorFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-                  >
-                    <option value="all">All Sectors</option>
-                    {uniqueSectors.map(sector => (
-                      <option key={sector} value={sector}>{sector}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={filterBy}
-                    onChange={e => setFilterBy(e.target.value as any)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-                  >
-                    <option value="all">All</option>
-                    <option value="gainers">Gainers</option>
-                    <option value="losers">Losers</option>
-                  </select>
-                  <select
-                    value={sortBy}
-                    onChange={e => setSortBy(e.target.value as any)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-                  >
-                    <option value="symbol">Sort by Symbol</option>
-                    <option value="price">Sort by Price</option>
-                    <option value="change">Sort by Change</option>
-                  </select>
-                  <button
-                    onClick={handleRefresh}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                    title="Refresh Portfolio"
-                  >
-                    <ArrowUpDown className="w-4 h-4" /> Sync
-                  </button>
-                </div>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 mb-8 p-4">
                 <div className="overflow-x-auto">
@@ -414,21 +430,8 @@ function PortfolioPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
-                      {portfolioHoldings.map((holding: { symbol: string; shares: number }, index: number) => {
+                      {validHoldings.map((holding: PortfolioHolding, index: number) => {
                         const stock = stockMap.get(holding.symbol);
-                        if (!stock || stock.metaError) {
-                          return (
-                            <tr key={holding.symbol} className="bg-yellow-50 dark:bg-yellow-900/20">
-                              <td className="px-4 py-3" colSpan={6}>
-                                <div className="flex items-center gap-3 text-yellow-700 dark:text-yellow-200">
-                                  <AlertCircle className="w-5 h-5" />
-                                  <span className="font-bold">{holding.symbol}</span>
-                                  <span>No data available for this symbol (API error or limit)</span>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        }
                         const positionValue = stock.price * holding.shares;
                         const changePositive = stock.change >= 0;
                         return (
@@ -462,12 +465,21 @@ function PortfolioPage() {
                               <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getVolatility(stock.symbol) === 'High' ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200' : getVolatility(stock.symbol) === 'Medium' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200' : 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-200'}`}>{getVolatility(stock.symbol)}</span>
                             </td>
                             <td className="px-4 py-3 text-center">
-                              <button
-                                onClick={() => navigate(`/stock/${stock.symbol}`)}
-                                className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-blue-100 dark:hover:bg-blue-800 text-xs font-semibold transition-colors"
-                              >
-                                View
-                              </button>
+                              <div className="flex items-center gap-2 justify-center">
+                                <button
+                                  onClick={() => navigate(`/stock/${stock.symbol}`)}
+                                  className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-blue-100 dark:hover:bg-blue-800 text-xs font-semibold transition-colors text-[12px]"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveStock(stock.symbol)}
+                                  className="border border-red-500 text-red-600 bg-white dark:bg-gray-900 rounded-full w-7 h-7 flex items-center justify-center text-[15px] shadow-sm transition-all duration-150 hover:bg-red-50 dark:hover:bg-red-800 hover:text-white hover:border-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+                                  title="Remove from Portfolio"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -488,16 +500,16 @@ function PortfolioPage() {
                   <div className="flex items-center gap-2">
                     <CircleDot className="w-4 h-4 text-green-500 animate-pulse" />
                     <span className="text-xs text-gray-500 dark:text-gray-400">Live</span>
-                    <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-0.5 rounded text-xs font-semibold">{relevantNews.length} articles</span>
+                    <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-0.5 rounded text-xs font-semibold">{newsToShow.length} articles</span>
                   </div>
                 </div>
                 <div className="p-6 space-y-4">
-                  {loading && relevantNews.length === 0 ? (
+                  {loading && newsToShow.length === 0 ? (
                     <LoadingSpinner />
-                  ) : relevantNews.length === 0 ? (
-                    <div className="text-gray-500 dark:text-gray-400 text-center">No relevant news found.</div>
+                  ) : newsToShow.length === 0 ? (
+                    <div className="text-gray-500 dark:text-gray-400 text-center">No news found.</div>
                   ) : (
-                    relevantNews.map((n, i) => (
+                    newsToShow.map((n, i) => (
                       <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700 p-4 shadow flex flex-col gap-2 hover:shadow-lg transition-all duration-200">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">{n.symbol}</span>
@@ -534,18 +546,160 @@ function StockDetailWrapper() {
   );
 }
 
-function App() {
+function MarketStocksPage({ addToPortfolio, portfolioHoldings }: {
+  addToPortfolio: (symbol: string) => void;
+  portfolioHoldings: PortfolioHolding[];
+}) {
+  const { stocks, loading, error, refreshData } = useStockData();
+  const navigate = useNavigate();
+
+  const handleAddToPortfolio = (symbol: string) => {
+    addToPortfolio(symbol);
+    setTimeout(() => navigate('/'), 500); // Navigate to portfolio after short delay
+  };
+
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<PortfolioPage />} />
-        <Route path="/stock/:symbol" element={<StockDetailWrapper />} />
-        <Route path="/news" element={<NewsPage />} />
-        <Route path="/alerts" element={<AlertsPage />} />
-        <Route path="/watchlist" element={<WatchlistPage />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-      </Routes>
-    </BrowserRouter>
+    <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 font-sans">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold text-blue-700 dark:text-blue-300 flex items-center gap-3"><TrendingUp className="w-7 h-7 animate-bounce" /> Market Stocks</h1>
+        <button
+          onClick={refreshData}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          title="Refresh Stocks"
+        >
+          <ArrowUpDown className="w-4 h-4" /> Refresh
+        </button>
+      </div>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 mb-8 p-4">
+        <div className="overflow-x-auto">
+          {loading ? (
+            <LoadingSpinner />
+          ) : error ? (
+            <div className="text-red-600 dark:text-red-400 text-center p-8">{error}</div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm font-medium">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-900">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Company</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Price</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Change</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Sector</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Action</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
+                {stocks.filter(stock => !stock.metaError).map((stock, index) => {
+                  const changePositive = stock.change >= 0;
+                  return (
+                    <tr key={stock.symbol} className="hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                      <td className="px-4 py-3 flex items-center gap-4 min-w-[220px]">
+                        <img
+                          src={`https://finnhub.io/api/logo?symbol=${stock.symbol}`}
+                          alt={stock.symbol}
+                          className="w-10 h-10 rounded bg-gray-100 dark:bg-gray-900 object-contain border border-gray-200 dark:border-gray-700 shadow"
+                          onError={e => (e.currentTarget.src = 'https://images.pexels.com/photos/590020/pexels-photo-590020.jpeg?auto=compress&cs=tinysrgb&w=600')}
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-gray-900 dark:text-white text-base">{stock.symbol}</span>
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 font-sans">{stock.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-mono text-gray-900 dark:text-white">${stock.price.toFixed(2)}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className={`font-mono font-semibold flex items-center gap-1 justify-end ${changePositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{changePositive ? <>&#8593;</> : <>&#8595;</>}{Math.abs(stock.changePercent).toFixed(2)}% <span className="text-xs">({changePositive ? '+' : '-'}${Math.abs(stock.change).toFixed(2)})</span></span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200`}>{symbolToSector[stock.symbol] || 'Other'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleAddToPortfolio(stock.symbol)}
+                          className="border border-blue-500 text-blue-600 bg-white dark:bg-gray-900 rounded-full w-9 h-9 flex items-center justify-center text-lg font-bold shadow-sm transition-all duration-150 hover:bg-blue-50 dark:hover:bg-blue-800 hover:text-white hover:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 group"
+                          title="Add to Portfolio"
+                        >
+                          <PlusCircle className="w-6 h-6 group-hover:text-white group-hover:stroke-2 transition-all duration-150" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotFoundPage() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+      <h1 className="text-5xl font-bold text-blue-700 dark:text-blue-300 mb-4">404</h1>
+      <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">Page not found.</p>
+      <a href="/" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Go to Home</a>
+    </div>
+  );
+}
+
+function App() {
+  // Portfolio holdings state, persisted to localStorage
+  const [portfolioHoldings, setPortfolioHoldings] = React.useState(() => {
+    const saved = localStorage.getItem('portfolioHoldings');
+    return saved ? JSON.parse(saved) : [
+      { symbol: 'AAPL', shares: 25 },
+      { symbol: 'MSFT', shares: 15 },
+      { symbol: 'GOOGL', shares: 8 },
+      { symbol: 'TSLA', shares: 12 },
+      { symbol: 'JPM', shares: 8 }
+    ];
+  });
+
+  const [alertMsg, setAlertMsg] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    localStorage.setItem('portfolioHoldings', JSON.stringify(portfolioHoldings));
+  }, [portfolioHoldings]);
+
+  // Handler to add a stock to portfolio
+  const addToPortfolio = (symbol: string) => {
+    setPortfolioHoldings((prev: PortfolioHolding[]): PortfolioHolding[] => {
+      if (prev.some((h: PortfolioHolding) => h.symbol === symbol)) return prev; // Prevent duplicates
+      setAlertMsg(`${symbol} added to portfolio!`);
+      return [...prev, { symbol, shares: 1 }];
+    });
+  };
+
+  React.useEffect(() => {
+    if (alertMsg) {
+      const timeout = setTimeout(() => setAlertMsg(null), 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [alertMsg]);
+
+  return (
+    <>
+      {alertMsg && (
+        <div className="fixed top-6 right-6 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg font-semibold animate-bounce">
+          {alertMsg}
+        </div>
+      )}
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<PortfolioPage portfolioHoldings={portfolioHoldings} setPortfolioHoldings={setPortfolioHoldings} />} />
+          <Route path="/stock/:symbol" element={<StockDetailWrapper />} />
+          <Route path="/stocks" element={<MarketStocksPage addToPortfolio={addToPortfolio} portfolioHoldings={portfolioHoldings} />} />
+          <Route path="/alerts" element={<AlertsPage />} />
+          <Route path="/watchlist" element={<WatchlistPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 
