@@ -26,6 +26,7 @@ interface PortfolioTableProps {
   calculateWeightPercent: (stock: any, shares: number, totalPortfolioValue: number) => number;
   generate52WeekRange: (stock: any) => { low: number; high: number };
   totalPortfolioValue: number;
+  calculateNewsImpact: (symbol: string) => number;
 }
 
 const PortfolioTable: React.FC<PortfolioTableProps> = ({
@@ -51,7 +52,8 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
   calculateGainLoss,
   calculateWeightPercent,
   generate52WeekRange,
-  totalPortfolioValue
+  totalPortfolioValue,
+  calculateNewsImpact
 }) => {
   const [expandedStock, setExpandedStock] = useState<string | null>(null);
 
@@ -63,6 +65,15 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
       handleViewNews(symbol);
     }
   };
+
+  // Calculate overall impact and sentiment
+  const netImpact = filteredAndSortedStocks.reduce((sum, stock) => sum + (typeof calculateNewsImpact === 'function' ? calculateNewsImpact(stock.symbol) : 0), 0);
+  let portfolioImpactLabel = 'Small';
+  if (netImpact > 20) portfolioImpactLabel = 'Large';
+  else if (netImpact > 8) portfolioImpactLabel = 'Medium';
+  const overallSentiment = calculateSentiment(
+    filteredAndSortedStocks.flatMap(stock => news[stock.symbol] || [])
+  );
 
   return (
     <div className="col-span-10 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-4">
@@ -87,21 +98,42 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
         </div>
       </div>
       
-      <div className="overflow-x-auto">
+      <div className="mb-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="px-4 py-2 rounded-lg bg-purple-500/20 dark:bg-purple-900/40 text-purple-900 dark:text-white font-bold text-sm shadow border border-purple-300 dark:border-purple-800 flex items-center gap-2">
+            <span className={
+              portfolioImpactLabel === 'Large'
+                ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 px-2 py-1 rounded-lg shadow-sm'
+                : portfolioImpactLabel === 'Medium'
+                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 px-2 py-1 rounded-lg shadow-sm'
+                : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded-lg shadow-sm'
+            }>
+              {portfolioImpactLabel}
+            </span>
+            <span>Portfolio News Impact</span>
+          </div>
+          <div className="px-4 py-2 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-200 font-bold text-sm shadow border border-blue-200 dark:border-blue-700">
+            Overall Sentiment: {overallSentiment.sentiment} (Net Score: {overallSentiment.score.toFixed(2)})
+          </div>
+        </div>
+      </div>
+      
+      <div className="overflow-hidden">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 border-b-2 border-indigo-200 dark:border-gray-600">
               <th className="w-1/6 px-3 py-4 text-left text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Stock</th>
-              <th className="w-1/12 px-3 py-4 text-right text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Price</th>
-              <th className="w-1/12 px-3 py-4 text-right text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Change</th>
-              <th className="w-1/12 px-3 py-4 text-right text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Gain/Loss</th>
-              <th className="w-1/12 px-3 py-4 text-right text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Value</th>
-              <th className="w-1/12 px-3 py-4 text-center text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Weight %</th>
-              <th className="w-1/12 px-3 py-4 text-center text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">52-Week</th>
-              <th className="w-1/12 px-3 py-4 text-center text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Volatility</th>
-              <th className="w-1/12 px-3 py-4 text-center text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Sentiment</th>
-              <th className="w-1/12 px-3 py-4 text-center text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Trend</th>
-              <th className="w-1/12 px-3 py-4 text-center text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">Actions</th>
+              <th className="w-1/12 px-2 py-2 text-right text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Price</th>
+              <th className="w-1/12 px-2 py-2 text-right text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Change</th>
+              <th className="w-1/12 px-2 py-2 text-right text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Portfolio Impact</th>
+              <th className="w-1/12 px-2 py-2 text-right text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Today's Gain %</th>
+              <th className="w-1/12 px-2 py-2 text-right text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Overall Gain %</th>
+              <th className="w-1/12 px-2 py-2 text-right text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Value</th>
+              <th className="w-1/12 px-2 py-2 text-center text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Weight %</th>
+              <th className="w-1/12 px-2 py-2 text-center text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">52-Week</th>
+              <th className="w-1/12 px-2 py-2 text-center text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Volatility</th>
+              <th className="w-1/12 px-2 py-2 text-center text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider border-r border-indigo-200 dark:border-gray-600">Sentiment</th>
+              <th className="w-1/12 px-2 py-2 text-center text-sm font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -119,6 +151,21 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
               const weightPercent = calculateWeightPercent(stock, holding?.shares || 0, totalPortfolioValue);
               const weekRange52 = generate52WeekRange(stock);
               
+              // Calculate today's gain %
+              const todaysGainPercent = stock.changePercent || 0;
+              
+              // Calculate overall gain %
+              const currentPrice = stock.price || 0;
+              const mockPurchasePrice = currentPrice - (stock.change || 0) * 10;
+              const overallGainPercent = mockPurchasePrice > 0 ? ((currentPrice - mockPurchasePrice) / mockPurchasePrice) * 100 : 0;
+              
+              // Calculate product: change × today's gain % × shares
+              const shares = holding?.shares || 0;
+              const changeGainShares = (stock.change || 0) * (todaysGainPercent || 0) * shares;
+              let changeGainSharesLabel = 'Small';
+              if (changeGainShares > 20) changeGainSharesLabel = 'Large';
+              else if (changeGainShares > 8) changeGainSharesLabel = 'Medium';
+              
               // Mock sparkline data
               const sparkData = Array.from({ length: 12 }, () => (stock.price || 0) * (0.95 + Math.random() * 0.1));
               
@@ -134,34 +181,40 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                         <div className="min-w-0">
                           <div className="text-base font-bold truncate">{stock.symbol}</div>
                           <div className="text-xs font-normal text-gray-500 dark:text-gray-400 truncate">{stock.name}</div>
+                          <div className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mt-1">Shares: {shares}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-4 text-right font-mono text-base font-bold text-indigo-900 dark:text-white border-r border-gray-200 dark:border-gray-600">${(stock.price || 0).toFixed(2)}</td>
-                    <td className="px-3 py-4 text-right font-mono font-semibold border-r border-gray-200 dark:border-gray-600">
+                    <td className="px-2 py-2 text-right font-mono text-sm font-bold text-indigo-900 dark:text-white border-r border-gray-200 dark:border-gray-600">${(stock.price || 0).toFixed(2)}</td>
+                    <td className="px-2 py-2 text-right font-mono font-semibold border-r border-gray-200 dark:border-gray-600">
                       <span className={`text-base ${changePositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                         {changePositive ? '+' : '-'}${Math.abs(stock.change || 0).toFixed(2)} ({changePositive ? '+' : '-'}{Math.abs(stock.changePercent || 0).toFixed(2)}%)
                       </span>
                     </td>
-                    <td className="px-3 py-4 text-right font-mono font-semibold border-r border-gray-200 dark:border-gray-600">
-                      <div className="flex flex-col">
-                        <span className={`text-base ${gainLossData.gainLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {gainLossData.gainLoss >= 0 ? '+' : '-'}${Math.abs(gainLossData.gainLoss).toFixed(2)}
-                        </span>
-                        <span className={`text-xs ${gainLossData.gainLossPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {gainLossData.gainLossPercent >= 0 ? '+' : '-'}{Math.abs(gainLossData.gainLossPercent).toFixed(2)}%
-                        </span>
-                      </div>
+                    <td className="px-2 py-2 text-right font-mono text-sm font-bold border-r border-gray-200 dark:border-gray-600">
+                      <span
+                        className={
+                          changeGainSharesLabel === 'Large'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200 px-2 py-1 rounded-lg shadow-sm'
+                            : changeGainSharesLabel === 'Medium'
+                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 px-2 py-1 rounded-lg shadow-sm'
+                            : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-1 rounded-lg shadow-sm'
+                        }
+                      >
+                        {changeGainSharesLabel}
+                      </span>
                     </td>
-                    <td className="px-3 py-4 text-right font-mono text-base font-bold text-indigo-900 dark:text-white border-r border-gray-200 dark:border-gray-600">${positionValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                    <td className="px-3 py-4 text-center text-base font-bold text-indigo-900 dark:text-white border-r border-gray-200 dark:border-gray-600">{weightPercent.toFixed(1)}%</td>
-                    <td className="px-3 py-4 text-center text-xs text-indigo-900 dark:text-white border-r border-gray-200 dark:border-gray-600">
+                    <td className="px-2 py-2 text-right font-mono text-sm font-bold text-indigo-900 dark:text-white border-r border-gray-200 dark:border-gray-600">{todaysGainPercent >= 0 ? '+' : '-'}{Math.abs(todaysGainPercent).toFixed(2)}%</td>
+                    <td className="px-2 py-2 text-right font-mono text-sm font-bold text-indigo-900 dark:text-white border-r border-gray-200 dark:border-gray-600">{overallGainPercent >= 0 ? '+' : '-'}{Math.abs(overallGainPercent).toFixed(2)}%</td>
+                    <td className="px-2 py-2 text-right font-mono text-sm font-bold text-indigo-900 dark:text-white border-r border-gray-200 dark:border-gray-600">${positionValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="px-2 py-2 text-center text-sm font-bold text-indigo-900 dark:text-white border-r border-gray-200 dark:border-gray-600">{weightPercent.toFixed(1)}%</td>
+                    <td className="px-2 py-2 text-center text-xs text-indigo-900 dark:text-white border-r border-gray-200 dark:border-gray-600">
                       <div className="flex flex-col">
                         <span className="font-bold">${weekRange52.high.toFixed(2)}</span>
                         <span className="text-xs text-gray-500 dark:text-gray-400">${weekRange52.low.toFixed(2)}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-4 text-center border-r border-gray-200 dark:border-gray-600">
+                    <td className="px-2 py-2 text-center border-r border-gray-200 dark:border-gray-600">
                       <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
                         volatility === 'High' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border border-red-200 dark:border-red-700' :
                         volatility === 'Medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-700' :
@@ -170,7 +223,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                         {volatility}
                       </span>
                     </td>
-                    <td className="px-3 py-4 text-center border-r border-gray-200 dark:border-gray-600">
+                    <td className="px-2 py-2 text-center border-r border-gray-200 dark:border-gray-600">
                       {stockNews.length > 0 ? (
                         <div className="flex flex-col items-center gap-1">
                           <span className={`px-2 py-1 rounded-lg text-xs font-bold ${getSentimentBgColor(overallSentiment.sentiment)}`}>
@@ -187,12 +240,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                         <span className="text-xs text-gray-400">No news</span>
                       )}
                     </td>
-                    <td className="px-3 py-4 text-center border-r border-gray-200 dark:border-gray-600">
-                      <Sparklines data={sparkData} width={60} height={20} margin={4}>
-                        <SparklinesLine color="#7c3aed" style={{ strokeWidth: 2, fill: 'none' }} />
-                      </Sparklines>
-                    </td>
-                    <td className="px-3 py-4 text-center">
+                    <td className="px-2 py-2 text-center">
                       <button 
                         className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100 border border-transparent hover:border-red-200 dark:hover:border-red-700" 
                         title="Delete Stock" 
@@ -209,7 +257,7 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                   {/* Expanded News Section */}
                   {isExpanded && (
                     <tr>
-                      <td colSpan={10} className="px-0 py-0">
+                      <td colSpan={11} className="bg-gray-50 dark:bg-gray-800 px-6 py-6 border-t border-b border-gray-200 dark:border-gray-700">
                         <div className="bg-gradient-to-r from-gray-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 border-l-4 border-purple-500">
                           <div className="p-4">
                             {newsLoading[stock.symbol] ? (
@@ -222,76 +270,78 @@ const PortfolioTable: React.FC<PortfolioTableProps> = ({
                                 <div className="text-gray-400 dark:text-gray-500">No news available</div>
                               </div>
                             ) : (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                                {stockNews.map((newsItem, index) => (
-                                  <div key={index} className="bg-white dark:bg-gray-700 rounded-lg p-3 md:p-4 shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
-                                    {/* News Source and Meta */}
-                                    <div className="flex items-center justify-between mb-2 md:mb-3">
-                                      <div className="flex items-center gap-1 md:gap-2">
-                                        <span className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                                          {newsItem.source || 'Market News'}
-                                        </span>
-                                        {newsItem.isCompetitor && (
-                                          <span className="px-1 md:px-2 py-1 bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 rounded-full text-xs font-semibold border border-amber-200 dark:border-amber-700">
-                                            Competitor
-                                          </span>
-                                        )}
-                                        {!newsItem.isCompetitor && (
-                                          <span className="px-1 md:px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full text-xs font-semibold border border-blue-200 dark:border-blue-700">
-                                            Direct
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                                        {newsItem.timeAgo}
-                                      </div>
-                                    </div>
-
-                                    {/* News Title */}
-                                    <h4 className="text-xs md:text-sm font-bold text-gray-900 dark:text-white mb-2 leading-tight line-clamp-2">
-                                      {newsItem.title}
-                                    </h4>
-
-                                    {/* News Description */}
-                                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-2 md:mb-3 leading-relaxed line-clamp-3">
-                                      {newsItem.description}
-                                    </p>
-
-                                    {/* Sentiment and Impact */}
-                                    {newsItem.sentiment && (
+                              <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                                  {stockNews.map((newsItem, index) => (
+                                    <div key={index} className="bg-white dark:bg-gray-700 rounded-lg p-3 md:p-4 shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
+                                      {/* News Source and Meta */}
                                       <div className="flex items-center justify-between mb-2 md:mb-3">
                                         <div className="flex items-center gap-1 md:gap-2">
-                                          <TrendingUp className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                                          <span className={`px-1 md:px-2 py-1 rounded-full text-xs font-semibold ${getSentimentBgColor(newsItem.sentiment.label)}`}>
-                                            {newsItem.sentiment.label}
+                                          <span className="text-xs md:text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                            {newsItem.source || 'Market News'}
                                           </span>
+                                          {newsItem.isCompetitor && (
+                                            <span className="px-1 md:px-2 py-1 bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 rounded-full text-xs font-semibold border border-amber-200 dark:border-amber-700">
+                                              Competitor
+                                            </span>
+                                          )}
+                                          {!newsItem.isCompetitor && (
+                                            <span className="px-1 md:px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full text-xs font-semibold border border-blue-200 dark:border-blue-700">
+                                              Direct
+                                            </span>
+                                          )}
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                          <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold">Impact:</span>
-                                          <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold bg-purple-50 dark:bg-purple-900/20 px-1 md:px-2 py-1 rounded">
-                                            {newsItem.sentiment.impact_score || '0.0'}
-                                          </span>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                                          {newsItem.timeAgo}
                                         </div>
                                       </div>
-                                    )}
 
-                                    {/* Read Full Article Link */}
-                                    {newsItem.url && (
-                                      <div className="flex justify-end">
-                                        <a
-                                          href={newsItem.url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-1 px-2 md:px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-xs"
-                                        >
-                                          Read Article
-                                          <ExternalLink className="w-3 h-3" />
-                                        </a>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
+                                      {/* News Title */}
+                                      <h4 className="text-xs md:text-sm font-bold text-gray-900 dark:text-white mb-2 leading-tight line-clamp-2">
+                                        {newsItem.title}
+                                      </h4>
+
+                                      {/* News Description */}
+                                      <p className="text-xs text-gray-600 dark:text-gray-300 mb-2 md:mb-3 leading-relaxed line-clamp-4">
+                                        {newsItem.description}
+                                      </p>
+
+                                      {/* Sentiment and Impact */}
+                                      {newsItem.sentiment && (
+                                        <div className="flex items-center justify-between mb-2 md:mb-3">
+                                          <div className="flex items-center gap-1 md:gap-2">
+                                            <TrendingUp className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                            <span className={`px-1 md:px-2 py-1 rounded-full text-xs font-semibold ${getSentimentBgColor(newsItem.sentiment.label)}`}>
+                                              {newsItem.sentiment.label}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold">Impact:</span>
+                                            <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold bg-purple-50 dark:bg-purple-900/20 px-1 md:px-2 py-1 rounded">
+                                              {newsItem.sentiment.impact_score || '0.0'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Read Full Article Link */}
+                                      {newsItem.url && (
+                                        <div className="flex justify-end">
+                                          <a
+                                            href={newsItem.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 px-2 md:px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-xs"
+                                          >
+                                            Read Article
+                                            <ExternalLink className="w-3 h-3" />
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
                             )}
                           </div>
                         </div>

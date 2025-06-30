@@ -17,6 +17,7 @@ interface NotificationItem {
   message: string;
   url?: string;
   time: number;
+  green?: boolean;
 }
 
 interface HeaderProps {
@@ -25,7 +26,7 @@ interface HeaderProps {
   searchResults?: SearchResult[];
   isRefreshing?: boolean;
   lastUpdated?: Date | null;
-  alerts: { id: number; message: string; read: boolean; time: string }[];
+  alerts: { id: number; message: string; read: boolean; time: string; green?: boolean }[];
   unreadCount: number;
   onBellClick: () => void;
   showDropdown: boolean;
@@ -150,47 +151,6 @@ export default function Header({
 
         {/* Search and Actions */}
         <div className="flex items-center space-x-4">
-          <div className="relative" ref={searchRef}>
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search stocks (e.g., AAPL, Tesla)..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="pl-10 pr-4 py-2 w-80 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            />
-            
-            {/* Search Results Dropdown */}
-            {showResults && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-72 overflow-y-auto z-50">
-                {loadingResults && (
-                  <div className="px-4 py-3 text-gray-500 dark:text-gray-400">Searching...</div>
-                )}
-                {!loadingResults && liveResults.length === 0 && (
-                  <div className="px-4 py-3 text-gray-500 dark:text-gray-400">No results found</div>
-                )}
-                {liveResults.map((result, index) => (
-                  <div
-                    key={index}
-                    onClick={() => handleResultClick(result.symbol)}
-                    className="flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border-b border-gray-100 dark:border-gray-800 last:border-b-0"
-                  >
-                    {result.logo && (
-                      <img src={result.logo} alt="logo" className="w-7 h-7 rounded bg-gray-100 dark:bg-gray-800 object-contain" />
-                    )}
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white">{result.symbol}</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-300">{result.name}</div>
-                    </div>
-                    {result.price !== undefined && (
-                      <div className="ml-auto font-semibold text-blue-600 dark:text-blue-400">${result.price.toFixed(2)}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          
           <button 
             onClick={onRefresh}
             disabled={isRefreshing}
@@ -239,7 +199,7 @@ export default function Header({
                     <li className="px-4 py-3 text-sm text-gray-400">No alerts</li>
                   ) : (
                     alerts.map(alert => (
-                      <li key={alert.id} className={`px-4 py-3 text-sm ${alert.read ? 'text-gray-400' : 'text-indigo-900 dark:text-white font-semibold'}`}>
+                      <li key={alert.id} className={`px-4 py-3 text-sm ${alert.green ? 'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-200 font-bold border border-green-300 dark:border-green-700' : alert.read ? 'text-gray-400' : 'text-indigo-900 dark:text-white font-semibold'}`}>
                         <div className="flex justify-between items-center">
                           <span>{alert.message}</span>
                           <span className="text-xs text-gray-400 ml-2">{alert.time}</span>

@@ -10,6 +10,7 @@ import SummaryCards from './segments/SummaryCards';
 import Header from './components/Header';
 import { getLogoUrl } from './utils/symbolToSector';
 import MarketNewsCard from './segments/MarketNewsCard';
+import axios from 'axios';
 
 interface Holding {
   symbol: string;
@@ -83,7 +84,7 @@ export default function App() {
   const [sectorFilter, setSectorFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'symbol' | 'price' | 'change'>('symbol');
   const [filterText, setFilterText] = useState('');
-  const [alerts, setAlerts] = useState<{ id: number; message: string; read: boolean; time: string }[]>([]);
+  const [alerts, setAlerts] = useState<{ id: number; message: string; read: boolean; time: string; green?: boolean }[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const alertIdRef = useRef(1);
@@ -119,6 +120,34 @@ export default function App() {
     }, 15000); // every 15s
     return () => clearInterval(interval);
   }, [portfolioHoldings]);
+
+  // Show green alert and send email on stock decrease
+  useEffect(() => {
+    if (!stocks || stocks.length === 0) return;
+    stocks.forEach(stock => {
+      if (stock.change && stock.change < 0) {
+        // Show green alert
+        setAlerts(prev => [
+          {
+            id: alertIdRef.current++,
+            message: `${stock.symbol} price decreased by $${Math.abs(stock.change).toFixed(2)} (${Math.abs(stock.changePercent).toFixed(2)}%)`,
+            read: false,
+            time: new Date().toLocaleTimeString(),
+            green: true
+          },
+          ...prev.slice(0, 9)
+        ]);
+        setUnreadCount(c => c + 1);
+        // Send email (placeholder API call)
+        axios.post('/api/send-alert-email', {
+          symbol: stock.symbol,
+          change: stock.change,
+          changePercent: stock.changePercent
+        }).catch(() => {});
+      }
+    });
+    // eslint-disable-next-line
+  }, [stocks]);
 
   // Core functions
   async function loadStocks(holdings: Holding[]) {
@@ -408,6 +437,82 @@ export default function App() {
       score: avgScore,
       impact: avgImpact
     };
+  };
+
+  // --- NEW: Portfolio-level impact and sentiment ---
+  // Helper to get stock size (large, medium, small) by market value
+  const getStockSize = (positionValue) => {
+    if (positionValue > 50000) return 'large';
+    if (positionValue > 10000) return 'medium';
+    return 'small';
+  };
+
+  // Calculate per-news impact weighted by stock size
+  const calculateNewsImpact = (symbol) => {
+    const holding = portfolioHoldings.find(h => h.symbol === symbol);
+    const stock = stocks.find(s => s.symbol === symbol);
+    if (!holding || !stock) return 0;
+    const positionValue = (stock.price || 0) * (holding.shares || 0);
+    const size = getStockSize(positionValue);
+    const newsItems = news[symbol] || [];
+    let totalImpact = 0;
+    let count = 0;
+    newsItems.forEach(item => {
+      let impact = parseFloat(item?.sentiment?.impact_score || '0');
+      // Weight by size
+      if (size === 'large') impact *= 1.5;
+      else if (size === 'medium') impact *= 1.1;
+      else impact *= 0.8;
+      totalImpact += impact;
+      count++;
+    });
+    return count > 0 ? totalImpact / count : 0;
+  };
+
+  // Calculate overall portfolio impact (average weighted by position value)
+  const calculatePortfolioImpact = () => {
+    let totalWeightedImpact = 0;
+    let totalValue = 0;
+    portfolioHoldings.forEach(holding => {
+      const stock = stocks.find(s => s.symbol === holding.symbol);
+      if (!stock) return;
+      const positionValue = (stock.price || 0) * (holding.shares || 0);
+      const newsItems = news[holding.symbol] || [];
+      let stockImpact = 0;
+      let count = 0;
+      newsItems.forEach(item => {
+        let impact = parseFloat(item?.sentiment?.impact_score || '0');
+        stockImpact += impact;
+        count++;
+      });
+      if (count > 0) stockImpact = stockImpact / count;
+      totalWeightedImpact += stockImpact * positionValue;
+      totalValue += positionValue;
+    });
+    return totalValue > 0 ? totalWeightedImpact / totalValue : 0;
+  };
+
+  // Calculate overall portfolio sentiment (average of all news, weighted by position value)
+  const calculatePortfolioSentiment = () => {
+    let totalWeightedScore = 0;
+    let totalValue = 0;
+    portfolioHoldings.forEach(holding => {
+      const stock = stocks.find(s => s.symbol === holding.symbol);
+      if (!stock) return;
+      const positionValue = (stock.price || 0) * (holding.shares || 0);
+      const newsItems = news[holding.symbol] || [];
+      let stockScore = 0;
+      let count = 0;
+      newsItems.forEach(item => {
+        let score = item?.sentiment?.score || 0;
+        stockScore += score;
+        count++;
+      });
+      if (count > 0) stockScore = stockScore / count;
+      totalWeightedScore += stockScore * positionValue;
+      totalValue += positionValue;
+    });
+    return totalValue > 0 ? totalWeightedScore / totalValue : 0;
   };
 
   const calculateVolatility = (stock: any) => {

@@ -8,19 +8,8 @@ interface SummaryCardsProps {
   darkMode: boolean;
 }
 
-// Placeholder for PortfolioValueChart
-const PortfolioValueChart = () => (
-  <div className="w-full mb-2 flex justify-center">
-    {/* Chart will go here */}
-    <div className="w-full max-w-2xl h-40 bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-gray-800 dark:to-gray-700 rounded-xl flex items-center justify-center text-indigo-400 dark:text-indigo-200 text-sm font-semibold">
-      Portfolio Value Chart (Loading...)
-    </div>
-  </div>
-);
-
 const SummaryCards: React.FC<SummaryCardsProps> = ({ totalValue, totalDayChange, totalGainLoss, activePositions, darkMode }) => (
   <>
-    <PortfolioValueChart />
     <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 mb-2 px-4">
       <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 rounded-xl p-3 flex flex-col items-start shadow-lg text-white">
         <span className="text-xs font-semibold mb-1 opacity-90">Total Value</span>
