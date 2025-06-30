@@ -1,41 +1,47 @@
 import React from 'react';
-import { TrendingUp, Bell, Star, BarChart2, Briefcase, Globe } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { Briefcase, TrendingUp, BarChart3, Settings, Home } from 'lucide-react';
 
-const navItems = [
-  { name: 'Portfolio', icon: Briefcase, to: '/' },
-  { name: 'Market Stocks', icon: Globe, to: '/stocks' },
-  { name: 'Alerts', icon: Bell, to: '/alerts' },
-  { name: 'Watchlist', icon: Star, to: '/watchlist' },
-  { name: 'Analytics', icon: BarChart2, to: '/analytics' },
-];
+interface SidebarProps {
+  fixed?: boolean;
+}
 
-export default function Sidebar() {
+export default function Sidebar({ fixed = true }: SidebarProps) {
   return (
-    <aside className="h-screen w-16 bg-gradient-to-b from-blue-100/80 via-white/90 to-blue-200/60 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col py-3 px-0 fixed top-0 left-0 z-40 shadow-md items-center font-sans">
-      <div className="mb-6 flex items-center justify-center w-full">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-2 rounded-lg shadow-md">
+    <aside className={`h-screen w-20 bg-gradient-to-b from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col py-4 px-2 ${fixed ? 'fixed top-0 left-0 z-40' : ''} shadow-lg items-center font-sans`}>
+      {/* Logo */}
+      <div className="mb-8 flex items-center justify-center w-full">
+        <div className="bg-gradient-to-br from-indigo-600 to-purple-600 p-3 rounded-xl shadow-lg">
           <TrendingUp className="w-6 h-6 text-white" />
         </div>
       </div>
-      <nav className="flex-1 flex flex-col gap-3 items-center w-full">
-        {navItems.map(({ name, icon: Icon, to }) => (
-          <NavLink
-            key={name}
-            to={to}
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center w-11 h-11 rounded-lg text-base font-semibold transition-all duration-200 shadow-sm border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-700 hover:bg-blue-200/70 dark:hover:bg-gray-800/70 hover:shadow-lg ${isActive ? 'bg-blue-600/90 text-white shadow-lg border-blue-500 dark:bg-blue-700/90 dark:text-white' : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200'}`
-            }
-            tabIndex={0}
-            title={name}
-          >
-            <Icon className="w-5 h-5 mb-0.5" />
-            <span className="sr-only">{name}</span>
-          </NavLink>
-        ))}
+      
+      {/* Navigation */}
+      <nav className="flex-1 flex flex-col gap-4 items-center w-full">
+        <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer group">
+          <Home className="w-5 h-5 mb-0.5 group-hover:scale-110 transition-transform" />
+          <span className="sr-only">Dashboard</span>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer group">
+          <Briefcase className="w-5 h-5 mb-0.5 group-hover:scale-110 transition-transform" />
+          <span className="sr-only">Portfolio</span>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer group">
+          <BarChart3 className="w-5 h-5 mb-0.5 group-hover:scale-110 transition-transform" />
+          <span className="sr-only">Analytics</span>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-gray-500 to-gray-600 text-white shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer group">
+          <Settings className="w-5 h-5 mb-0.5 group-hover:scale-110 transition-transform" />
+          <span className="sr-only">Settings</span>
+        </div>
       </nav>
-      <div className="mt-auto text-[10px] text-gray-400 dark:text-gray-600 px-1 pt-6 pb-2 text-center w-full border-t border-gray-200 dark:border-gray-800">
-        &copy; {new Date().getFullYear()}<br/>FIN-INTEL
+      
+      {/* Footer */}
+      <div className="mt-auto text-[10px] text-gray-500 dark:text-gray-400 px-1 pt-4 pb-2 text-center w-full border-t border-gray-200 dark:border-gray-700">
+        <div className="font-bold text-indigo-600 dark:text-indigo-400 mb-1">FIN-INTEL</div>
+        <div className="text-gray-400 dark:text-gray-500">&copy; {new Date().getFullYear()}</div>
       </div>
     </aside>
   );

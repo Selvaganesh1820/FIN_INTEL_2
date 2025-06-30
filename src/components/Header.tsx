@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, Search, Bell, User, RefreshCw, Moon, Sun } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { fetchStockData } from '../services/stockApi';
 
 interface SearchResult {
@@ -26,6 +25,11 @@ interface HeaderProps {
   searchResults?: SearchResult[];
   isRefreshing?: boolean;
   lastUpdated?: Date | null;
+  alerts: { id: number; message: string; read: boolean; time: string }[];
+  unreadCount: number;
+  onBellClick: () => void;
+  showDropdown: boolean;
+  onDropdownClose: () => void;
 }
 
 export default function Header({ 
@@ -33,7 +37,12 @@ export default function Header({
   onRefresh, 
   searchResults = [], 
   isRefreshing = false,
-  lastUpdated 
+  lastUpdated,
+  alerts,
+  unreadCount,
+  onBellClick,
+  showDropdown,
+  onDropdownClose
 }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
@@ -45,7 +54,6 @@ export default function Header({
   });
   const [liveResults, setLiveResults] = useState<SearchResult[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
-  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showNotif, setShowNotif] = useState(false);
   const [notifPermission, setNotifPermission] = useState(Notification.permission);
@@ -113,7 +121,8 @@ export default function Header({
   const handleResultClick = (symbol: string) => {
     setSearchQuery(symbol);
     setShowResults(false);
-    navigate(`/stock/${symbol}`);
+    // For now, just log the selection - could be used to add stock to portfolio
+    console.log(`Selected stock: ${symbol}`);
   };
 
   const formatLastUpdated = (date: Date | null) => {
@@ -203,6 +212,45 @@ export default function Header({
           >
             {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
+          
+          {/* Notification Bell */}
+          <div className="relative">
+            <button
+              className="relative p-2 rounded-full hover:bg-purple-100 dark:hover:bg-gray-800 transition-colors"
+              onClick={onBellClick}
+              aria-label="Notifications"
+            >
+              <Bell className="w-6 h-6 text-indigo-900 dark:text-white" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5 shadow">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+            {/* Dropdown */}
+            {showDropdown && (
+              <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                  <span className="font-semibold text-indigo-900 dark:text-white">Notifications</span>
+                  <button className="text-xs text-gray-500 hover:text-indigo-700 dark:hover:text-indigo-300" onClick={onDropdownClose}>Close</button>
+                </div>
+                <ul className="max-h-64 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+                  {alerts.length === 0 ? (
+                    <li className="px-4 py-3 text-sm text-gray-400">No alerts</li>
+                  ) : (
+                    alerts.map(alert => (
+                      <li key={alert.id} className={`px-4 py-3 text-sm ${alert.read ? 'text-gray-400' : 'text-indigo-900 dark:text-white font-semibold'}`}>
+                        <div className="flex justify-between items-center">
+                          <span>{alert.message}</span>
+                          <span className="text-xs text-gray-400 ml-2">{alert.time}</span>
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

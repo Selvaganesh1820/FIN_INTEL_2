@@ -33,19 +33,6 @@ export interface NewsItem {
   url?: string;
 }
 
-const DEMO_STOCKS = [
-  { symbol: 'AAPL', name: 'Apple Inc.' },
-  { symbol: 'MSFT', name: 'Microsoft Corporation' },
-  { symbol: 'GOOGL', name: 'Alphabet Inc.' },
-  { symbol: 'AMZN', name: 'Amazon.com Inc.' },
-  { symbol: 'TSLA', name: 'Tesla Inc.' },
-  { symbol: 'NVDA', name: 'NVIDIA Corporation' },
-  { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
-  { symbol: 'AMD', name: 'Advanced Micro Devices' },
-  { symbol: 'META', name: 'Meta Platforms Inc.' },
-  { symbol: 'NFLX', name: 'Netflix Inc.' }
-];
-
 // Fetch real-time stock data
 export const fetchStockData = async (symbol: string): Promise<StockData> => {
   try {
@@ -56,7 +43,7 @@ export const fetchStockData = async (symbol: string): Promise<StockData> => {
         symbol: symbol,
         apikey: API_KEY
       },
-      timeout: 5000
+      timeout: 10000
     });
 
     const quote = response.data['Global Quote'];
@@ -70,8 +57,10 @@ export const fetchStockData = async (symbol: string): Promise<StockData> => {
         volume: parseInt(quote['06. volume'])
       };
     }
-    throw new Error('Invalid API response');
+    throw new Error('Invalid Alpha Vantage API response');
   } catch (error) {
+    console.log(`Alpha Vantage failed for ${symbol}, trying Finnhub...`);
+    
     // Try Finnhub as secondary fallback
     try {
       const finnhubResponse = await axios.get(`${FINNHUB_BASE_URL}/quote`, {
@@ -79,17 +68,20 @@ export const fetchStockData = async (symbol: string): Promise<StockData> => {
           symbol: symbol,
           token: FINNHUB_API_KEY
         },
-        timeout: 5000
+        timeout: 10000
       });
+      
       const profileResponse = await axios.get(`${FINNHUB_BASE_URL}/stock/profile2`, {
         params: {
           symbol: symbol,
           token: FINNHUB_API_KEY
         },
-        timeout: 5000
+        timeout: 10000
       });
+      
       const data = finnhubResponse.data;
       const profile = profileResponse.data;
+      
       if (data && typeof data.c === 'number') {
         return {
           symbol: symbol,
@@ -103,18 +95,8 @@ export const fetchStockData = async (symbol: string): Promise<StockData> => {
       }
       throw new Error('Invalid Finnhub response');
     } catch (finnhubError) {
-      console.error(`Failed to fetch data for symbol: ${symbol}`, finnhubError);
-      // Return a placeholder with meta error
-      return {
-        symbol,
-        name: symbol,
-        price: 0,
-        change: 0,
-        changePercent: 0,
-        volume: 0,
-        marketCap: undefined,
-        metaError: true
-      } as any;
+      console.error(`Both APIs failed for symbol: ${symbol}`, finnhubError);
+      throw new Error(`Failed to fetch data for ${symbol}`);
     }
   }
 };
@@ -134,7 +116,7 @@ export const searchStocks = async (query: string): Promise<StockData[]> => {
         keywords: query,
         apikey: API_KEY
       },
-      timeout: 5000
+      timeout: 10000
     });
 
     const matches = response.data.bestMatches || [];
@@ -156,8 +138,9 @@ export const searchStocks = async (query: string): Promise<StockData[]> => {
           q: query,
           token: FINNHUB_API_KEY
         },
-        timeout: 5000
+        timeout: 10000
       });
+      
       const result = finnhubResponse.data.result || [];
       if (result.length > 0) {
         return result.slice(0, 10).map((item: any) => ({
@@ -170,17 +153,8 @@ export const searchStocks = async (query: string): Promise<StockData[]> => {
       }
       throw new Error('No matches from Finnhub');
     } catch (finnhubError) {
-      // Fallback to demo list
-      return DEMO_STOCKS.filter(stock =>
-        stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
-        stock.name.toLowerCase().includes(query.toLowerCase())
-      ).map(stock => ({
-        symbol: stock.symbol,
-        name: stock.name,
-        price: 0,
-        change: 0,
-        changePercent: 0
-      }));
+      console.error('Both search APIs failed:', finnhubError);
+      throw new Error('Failed to search stocks');
     }
   }
 };
