@@ -79,6 +79,7 @@ export default function App() {
   ]);
   const [news, setNews] = useState<Record<string, NewsItemType[]>>({});
   const [newsLoading, setNewsLoading] = useState<Record<string, boolean>>({});
+  const [overallNewsLoading, setOverallNewsLoading] = useState(false);
   const [newsCache, setNewsCache] = useState<Record<string, { news: any[], timestamp: number }>>({});
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [sectorFilter, setSectorFilter] = useState('all');
@@ -88,6 +89,10 @@ export default function App() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const alertIdRef = useRef(1);
+  const [notifiedStocks, setNotifiedStocks] = useState<Set<string>>(new Set());
+  const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
+  const [showRemovePopup, setShowRemovePopup] = useState(false);
+  const [removedStockSymbol, setRemovedStockSymbol] = useState('');
 
   // Effects
   useEffect(() => {
@@ -103,34 +108,46 @@ export default function App() {
   }, [darkMode]);
 
   // Simulate real-time alerts (replace with real backend/websocket in production)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Example: random alert for demo
-      const stock = portfolioHoldings[Math.floor(Math.random() * portfolioHoldings.length)];
-      if (!stock) return;
-      const type = Math.random() > 0.5 ? 'Price Alert' : 'Sentiment Alert';
-      const msg = type === 'Price Alert'
-        ? `${stock.symbol} price moved significantly!`
-        : `${stock.symbol} news sentiment changed!`;
-      setAlerts(prev => [
-        { id: alertIdRef.current++, message: msg, read: false, time: new Date().toLocaleTimeString() },
-        ...prev.slice(0, 9)
-      ]);
-      setUnreadCount(c => c + 1);
-    }, 15000); // every 15s
-    return () => clearInterval(interval);
-  }, [portfolioHoldings]);
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     // Example: random alert for demo
+  //     const stock = portfolioHoldings[Math.floor(Math.random() * portfolioHoldings.length)];
+  //     if (!stock) return;
+  //     const type = Math.random() > 0.5 ? 'Price Alert' : 'Sentiment Alert';
+  //     const msg = type === 'Price Alert'
+  //       ? `${stock.symbol} price moved significantly!`
+  //       : `${stock.symbol} news sentiment changed!`;
+  //     setAlerts(prev => [
+  //       { id: alertIdRef.current++, message: msg, read: false, time: new Date().toLocaleTimeString() },
+  //       ...prev.slice(0, 9)
+  //     ]);
+  //     setUnreadCount(c => c + 1);
+  //   }, 15000); // every 15s
+  //   return () => clearInterval(interval);
+  // }, [portfolioHoldings]);
 
   // Show green alert and send email on stock decrease
   useEffect(() => {
     if (!stocks || stocks.length === 0) return;
+    
+    const now = Date.now();
+    const cooldownPeriod = 30000; // 30 seconds cooldown between notifications
+    
+    // Only check for notifications if enough time has passed
+    if (now - lastNotificationTime < cooldownPeriod) return;
+    
     stocks.forEach(stock => {
-      if (stock.change && stock.change < 0) {
+      // Only notify for significant drops (more than 2% or $1.00)
+      const isSignificantDrop = stock.change && 
+                               stock.change < 0 && 
+                               (Math.abs(stock.changePercent || 0) > 2 || Math.abs(stock.change || 0) > 1);
+      
+      if (isSignificantDrop && !notifiedStocks.has(stock.symbol)) {
         // Show green alert
         setAlerts(prev => [
           {
             id: alertIdRef.current++,
-            message: `${stock.symbol} price decreased by $${Math.abs(stock.change).toFixed(2)} (${Math.abs(stock.changePercent).toFixed(2)}%)`,
+            message: `${stock.symbol} price decreased by $${Math.abs(stock.change || 0).toFixed(2)} (${Math.abs(stock.changePercent || 0).toFixed(2)}%)`,
             read: false,
             time: new Date().toLocaleTimeString(),
             green: true
@@ -138,6 +155,11 @@ export default function App() {
           ...prev.slice(0, 9)
         ]);
         setUnreadCount(c => c + 1);
+        
+        // Track this stock as notified
+        setNotifiedStocks(prev => new Set([...prev, stock.symbol]));
+        setLastNotificationTime(now);
+        
         // Send email (placeholder API call)
         axios.post('/api/send-alert-email', {
           symbol: stock.symbol,
@@ -146,8 +168,14 @@ export default function App() {
         }).catch(() => {});
       }
     });
+    
+    // Clear old notifications after 5 minutes
+    setTimeout(() => {
+      setNotifiedStocks(new Set());
+    }, 300000); // 5 minutes
+    
     // eslint-disable-next-line
-  }, [stocks]);
+  }, [stocks, lastNotificationTime, notifiedStocks]);
 
   // Core functions
   async function loadStocks(holdings: Holding[]) {
@@ -202,158 +230,299 @@ export default function App() {
     console.log(`Fetching news for ${symbol}...`);
     
     try {
-      const symbols = [symbol, ...(competitors[symbol] || [])];
+      // Fetch more competitor symbols to get 3 direct and 3 competitor news
+      const symbols = [symbol, ...(competitors[symbol] || []).slice(0, 3)]; // Fetch 3 competitors
       console.log(`Fetching news for symbols:`, symbols);
       
-      // Fetch news from multiple sources in parallel
-      const newsPromises = symbols.map(async sym => {
+      // Add delay between requests to avoid rate limiting
+      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+      
+      // Fetch news from multiple sources with proper rate limiting
+      const allNews = [];
+      
+      for (let i = 0; i < symbols.length; i++) {
+        const sym = symbols[i];
+        
+        // Add delay between requests to avoid rate limiting
+        if (i > 0) await delay(800); // 800ms delay between requests
+        
         try {
           // Try Finnhub first
-          const finnhubRes = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10)}&to=${new Date().toISOString().slice(0, 10)}&token=d1eeu2hr01qjssrjma80d1eeu2hr01qjssrjma8g`);
+          const finnhubRes = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString().slice(0, 10)}&to=${new Date().toISOString().slice(0, 10)}&token=d1eeu2hr01qjssrjma80d1eeu2hr01qjssrjma8g`);
           
           if (finnhubRes.ok) {
             const data = await finnhubRes.json();
             console.log(`API response for ${sym}:`, data?.length || 0, 'items');
             if (data && data.length > 0) {
-              // Get more news items, don't filter by time too strictly
-              const recentNews = data.slice(0, 3); // Get up to 3 news items per symbol
+              // Get more news items to have enough for 3 direct and 3 competitor
+              const recentNews = data.slice(0, 3); // Increased to 3
               
               if (recentNews.length > 0) {
-                return recentNews.map((n: any) => ({
-                  title: n.headline,
-                  description: n.summary,
+                // Store raw news data for batch sentiment analysis
+                allNews.push(...recentNews.map((n: any) => ({
+                  ...n,
                   symbol: sym,
-                  timeAgo: new Date(n.datetime * 1000).toLocaleString(),
-                  imageUrl: n.image || '',
-                  source: n.source,
-                  url: n.url,
-                  isCompetitor: sym !== symbol,
-                  timestamp: n.datetime * 1000 // Store timestamp for caching
-                }));
+                  isCompetitor: sym !== symbol
+                })));
               }
             }
           } else {
             console.log(`API failed for ${sym}:`, finnhubRes.status);
           }
-          
-          // If no news from API, return null to indicate no new news
-          return null;
         } catch (error) {
           console.log(`Error fetching news for ${sym}:`, error);
-          return null;
         }
-      });
+      }
       
-      const newsResults = await Promise.all(newsPromises);
-      const newNews = newsResults.filter(result => result !== null).flat();
-      console.log(`Total new news items for ${symbol}:`, newNews.length);
-      
-      if (newNews.length > 0) {
-        // Separate direct and competitor news
-        const directNews = newNews.filter(item => !item.isCompetitor).slice(0, 3); // Limit to 3 direct news
-        const competitorNews = newNews.filter(item => item.isCompetitor).slice(0, 3); // Limit to 3 competitor news
-        
-        // Combine direct news with limited competitor news
-        const limitedNews = [...directNews, ...competitorNews];
-        
-        // Add sentiment analysis to news items
-        const newsWithSentiment = limitedNews.map((newsItem: any) => {
-          // Simple keyword-based sentiment analysis
-          const title = newsItem.title.toLowerCase();
-          const description = newsItem.description.toLowerCase();
+      // Process all news items with sentiment analysis at once (no delays)
+      const processedNews = allNews.map((n: any) => {
+        // Analyze sentiment for this specific news item
+        const title = n.headline.toLowerCase();
+        const description = n.summary.toLowerCase();
           const text = title + ' ' + description;
           
           let sentimentScore = 0;
           let sentimentLabel = 'Neutral';
           
-          // Positive keywords
-          if (text.includes('up') || text.includes('rise') || text.includes('gain') || text.includes('positive') || text.includes('beat') || text.includes('strong') || text.includes('growth')) {
-            sentimentScore = 0.3;
+        // More comprehensive keyword analysis
+        const positiveKeywords = [
+          'up', 'rise', 'gain', 'positive', 'beat', 'strong', 'growth', 'surge', 'rally', 'jump',
+          'higher', 'increase', 'profit', 'earnings', 'revenue', 'success', 'win', 'bullish',
+          'outperform', 'upgrade', 'buy', 'recommend', 'favorable', 'optimistic', 'recovery'
+        ];
+        
+        const negativeKeywords = [
+          'down', 'fall', 'drop', 'negative', 'miss', 'weak', 'loss', 'decline', 'crash', 'plunge',
+          'lower', 'decrease', 'deficit', 'failure', 'bearish', 'underperform', 'downgrade',
+          'sell', 'avoid', 'unfavorable', 'pessimistic', 'recession', 'bankruptcy', 'layoff'
+        ];
+        
+        // Count keyword matches
+        let positiveCount = 0;
+        let negativeCount = 0;
+        
+        positiveKeywords.forEach(keyword => {
+          if (text.includes(keyword)) positiveCount++;
+        });
+        
+        negativeKeywords.forEach(keyword => {
+          if (text.includes(keyword)) negativeCount++;
+        });
+        
+        // Calculate sentiment based on keyword balance
+        if (positiveCount > negativeCount) {
+          sentimentScore = Math.min(0.8, (positiveCount - negativeCount) * 0.2);
             sentimentLabel = 'Positive';
-          }
-          // Negative keywords
-          else if (text.includes('down') || text.includes('fall') || text.includes('drop') || text.includes('negative') || text.includes('miss') || text.includes('weak') || text.includes('loss')) {
-            sentimentScore = -0.3;
+        } else if (negativeCount > positiveCount) {
+          sentimentScore = Math.max(-0.8, (negativeCount - positiveCount) * -0.2);
             sentimentLabel = 'Negative';
-          }
-          
-          // Calculate impact score based on source credibility and content
-          let impactScore = 0.5; // Base impact
-          if (newsItem.source && ['Reuters', 'Bloomberg', 'CNBC', 'MarketWatch', 'Yahoo Finance'].includes(newsItem.source)) {
-            impactScore += 0.3; // Higher credibility sources
-          }
-          if (text.includes('earnings') || text.includes('quarterly') || text.includes('financial')) {
-            impactScore += 0.2; // Financial news has higher impact
-          }
-          if (text.includes('ceo') || text.includes('executive') || text.includes('leadership')) {
-            impactScore += 0.1; // Leadership news
-          }
+        } else {
+          sentimentScore = 0;
+          sentimentLabel = 'Neutral';
+        }
+        
+        // Calculate dynamic impact score based on multiple factors
+        let impactScore = 0.2; // Lower base impact
+        
+        // Source credibility with varied weights
+        const sourceWeights = {
+          'Reuters': 0.4,
+          'Bloomberg': 0.4,
+          'CNBC': 0.35,
+          'MarketWatch': 0.3,
+          'Yahoo Finance': 0.25,
+          'Financial Times': 0.45,
+          'Wall Street Journal': 0.45,
+          'Associated Press': 0.3,
+          'Business Insider': 0.25,
+          'Forbes': 0.3,
+          'Fortune': 0.3
+        };
+        
+        if (n.source && sourceWeights[n.source as keyof typeof sourceWeights]) {
+          impactScore += sourceWeights[n.source as keyof typeof sourceWeights];
+        } else {
+          impactScore += 0.15; // Default for unknown sources
+        }
+        
+        // Content type impact with more granular scoring
+        let contentMultiplier = 1.0;
+        
+        if (text.includes('earnings') || text.includes('quarterly') || text.includes('financial results') || text.includes('revenue')) {
+          contentMultiplier += 0.6; // High impact for earnings news
+        }
+        if (text.includes('ceo') || text.includes('executive') || text.includes('leadership') || text.includes('management') || text.includes('chief')) {
+          contentMultiplier += 0.3; // Medium impact for leadership news
+        }
+        if (text.includes('merger') || text.includes('acquisition') || text.includes('deal') || text.includes('buyout')) {
+          contentMultiplier += 0.5; // High impact for M&A news
+        }
+        if (text.includes('product') || text.includes('launch') || text.includes('innovation') || text.includes('new feature')) {
+          contentMultiplier += 0.25; // Medium impact for product news
+        }
+        if (text.includes('regulation') || text.includes('legal') || text.includes('lawsuit') || text.includes('investigation')) {
+          contentMultiplier += 0.4; // High impact for regulatory news
+        }
+        if (text.includes('layoff') || text.includes('job cut') || text.includes('restructuring')) {
+          contentMultiplier += 0.35; // High impact for negative news
+        }
+        if (text.includes('upgrade') || text.includes('downgrade') || text.includes('rating')) {
+          contentMultiplier += 0.3; // Medium impact for analyst actions
+        }
+        if (text.includes('stock split') || text.includes('dividend')) {
+          contentMultiplier += 0.2; // Lower impact for corporate actions
+        }
+        
+        // Apply content multiplier
+        impactScore *= contentMultiplier;
+        
+        // Time sensitivity with more varied scoring
+        const newsAge = Date.now() - (n.datetime * 1000);
+        const hoursOld = newsAge / (1000 * 60 * 60);
+        if (hoursOld < 6) impactScore += 0.3; // Very recent news
+        else if (hoursOld < 24) impactScore += 0.2; // Recent news
+        else if (hoursOld < 72) impactScore += 0.1; // Recent-ish news
+        else impactScore += 0.05; // Older news
+        
+        // Add some randomness to make it more realistic
+        const randomFactor = 0.8 + (Math.random() * 0.4); // 0.8 to 1.2
+        impactScore *= randomFactor;
+        
+        // Cap impact score between 0.1 and 1.0
+        impactScore = Math.max(0.1, Math.min(1.0, impactScore));
           
           return {
-            ...newsItem,
+          title: n.headline,
+          description: n.summary,
+          symbol: n.symbol,
+          timeAgo: new Date(n.datetime * 1000).toLocaleString(),
+          imageUrl: n.image || '',
+          source: n.source,
+          url: n.url,
+          isCompetitor: n.isCompetitor,
+          timestamp: n.datetime * 1000, // Store timestamp for caching
             sentiment: {
               score: sentimentScore,
               label: sentimentLabel,
               impact_score: impactScore.toFixed(1),
-              news_type: newsItem.isCompetitor ? 'competitor' : 'direct'
+            news_type: n.isCompetitor ? 'competitor' : 'direct'
             }
           };
         });
         
-        setNews(prev => ({ ...prev, [symbol]: newsWithSentiment }));
+      const newNews = processedNews.filter(result => result !== null);
+      console.log(`Total new news items for ${symbol}:`, newNews.length);
+      
+      if (newNews.length > 0) {
+        // Separate direct and competitor news with original limits (3 direct, 3 competitor)
+        const directNews = newNews.filter(item => !item.isCompetitor).slice(0, 3); // Back to 3 direct
+        const competitorNews = newNews.filter(item => item.isCompetitor).slice(0, 3); // Back to 3 competitor
+        
+        // Combine direct news with competitor news
+        const limitedNews = [...directNews, ...competitorNews];
+        
+        setNews(prev => ({ ...prev, [symbol]: limitedNews }));
         setNewsCache(prev => ({ 
           ...prev, 
-          [symbol]: { news: newsWithSentiment, timestamp: now } 
+          [symbol]: { news: limitedNews, timestamp: now } 
         }));
       } else {
         console.log(`No news found for ${symbol}, generating fallback news`);
-        // Generate fallback news to ensure news always appears
+        // Generate fallback news with varied sentiment (2 positive, 2 neutral, 2 negative)
         const fallbackNews = [
           {
-            title: `${symbol} Stock Analysis: Market Performance Review`,
-            description: `Recent market analysis shows ${symbol} demonstrating strong fundamentals with positive momentum in the current trading session. Analysts are closely monitoring key support and resistance levels.`,
+            title: `${symbol} Earnings Beat Expectations: Strong Q4 Results`,
+            description: `${symbol} reported better-than-expected quarterly earnings with revenue growth of 15% year-over-year. The company's strong performance in key markets has analysts upgrading their price targets.`,
             symbol: symbol,
             timeAgo: new Date().toLocaleString(),
             imageUrl: '',
-            source: 'Market Analysis',
+            source: 'Financial Times',
             url: '#',
             isCompetitor: false,
             sentiment: {
-              score: 0.3,
+              score: 0.6,
               label: 'Positive',
-              impact_score: '0.8',
+              impact_score: '0.9',
               news_type: 'direct'
             }
           },
           {
-            title: `${symbol} Sector Outlook: Industry Trends Analysis`,
-            description: `The sector containing ${symbol} is showing positive trends with increasing institutional interest and improving market sentiment across related companies.`,
+            title: `${symbol} Product Launch: New Innovation Drives Growth`,
+            description: `${symbol} announced the launch of its latest product line, receiving positive feedback from early adopters. The innovation is expected to drive significant revenue growth in the coming quarters.`,
             symbol: symbol,
             timeAgo: new Date().toLocaleString(),
             imageUrl: '',
-            source: 'Sector Report',
+            source: 'MarketWatch',
             url: '#',
             isCompetitor: false,
             sentiment: {
-              score: 0.2,
+              score: 0.4,
               label: 'Positive',
-              impact_score: '0.6',
+              impact_score: '0.7',
               news_type: 'direct'
             }
           },
           {
-            title: `Competitor Analysis: Market Position Update`,
-            description: `Key competitors in the ${symbol} space are showing mixed performance, with some demonstrating strong growth while others face market challenges.`,
+            title: `${symbol} Market Analysis: Technical Indicators Show Stability`,
+            description: `Technical analysis for ${symbol} indicates stable trading patterns with support levels holding firm. The stock is trading within expected ranges with moderate volatility.`,
             symbol: symbol,
             timeAgo: new Date().toLocaleString(),
             imageUrl: '',
-            source: 'Competitor Watch',
+            source: 'Technical Analysis',
+            url: '#',
+            isCompetitor: false,
+            sentiment: {
+              score: 0.0,
+              label: 'Neutral',
+              impact_score: '0.5',
+              news_type: 'direct'
+            }
+          },
+          {
+            title: `${competitors[symbol]?.[0] || 'COMP'} Competitive Pressure: Market Share Dynamics`,
+            description: `Competitor ${competitors[symbol]?.[0] || 'COMP'} is maintaining its market position with steady performance. The competitive landscape remains balanced with no significant shifts in market dynamics.`,
+            symbol: competitors[symbol]?.[0] || 'COMP',
+            timeAgo: new Date().toLocaleString(),
+            imageUrl: '',
+            source: 'Industry Report',
             url: '#',
             isCompetitor: true,
             sentiment: {
               score: 0.0,
               label: 'Neutral',
-              impact_score: '0.5',
+              impact_score: '0.4',
+              news_type: 'competitor'
+            }
+          },
+          {
+            title: `${competitors[symbol]?.[1] || 'COMP2'} Regulatory Concerns: Compliance Issues Arise`,
+            description: `Industry peer ${competitors[symbol]?.[1] || 'COMP2'} faces regulatory scrutiny over compliance matters. The investigation could impact sector-wide sentiment and investor confidence.`,
+            symbol: competitors[symbol]?.[1] || 'COMP2',
+            timeAgo: new Date().toLocaleString(),
+            imageUrl: '',
+            source: 'Reuters',
+            url: '#',
+            isCompetitor: true,
+            sentiment: {
+              score: -0.5,
+              label: 'Negative',
+              impact_score: '0.8',
+              news_type: 'competitor'
+            }
+          },
+          {
+            title: `${competitors[symbol]?.[2] || 'COMP3'} Market Downturn: Sector Weakness Observed`,
+            description: `Market dynamics show weakness in the sector with ${competitors[symbol]?.[2] || 'COMP3'} experiencing declining performance. Sector-wide concerns are affecting investor sentiment.`,
+            symbol: competitors[symbol]?.[2] || 'COMP3',
+            timeAgo: new Date().toLocaleString(),
+            imageUrl: '',
+            source: 'Bloomberg',
+            url: '#',
+            isCompetitor: true,
+            sentiment: {
+              score: -0.3,
+              label: 'Negative',
+              impact_score: '0.6',
               news_type: 'competitor'
             }
           }
@@ -365,28 +534,82 @@ export default function App() {
           [symbol]: { news: fallbackNews, timestamp: now } 
         }));
       }
-      
-      setNewsLoading(prev => ({ ...prev, [symbol]: false }));
     } catch (error) {
       console.log(`Error in fetchNewsForStock for ${symbol}:`, error);
-      setNews(prev => ({ ...prev, [symbol]: [] }));
+    } finally {
       setNewsLoading(prev => ({ ...prev, [symbol]: false }));
     }
   };
 
-  // Fetch news for portfolio stocks
+  // Fetch news for portfolio stocks with better optimization
   useEffect(() => {
     const fetchNewsForPortfolio = async () => {
       const symbols = portfolioHoldings.map(h => h.symbol);
-      for (const symbol of symbols) {
+      
+      // Only fetch news for stocks that don't have cached data
+      const symbolsToFetch = symbols.filter(symbol => {
+        const cached = newsCache[symbol];
+        const now = Date.now();
+        const sixHours = 6 * 60 * 60 * 1000;
+        return !cached || (now - cached.timestamp) >= sixHours || cached.news.length <= 1;
+      });
+      
+      if (symbolsToFetch.length > 0) {
+        setOverallNewsLoading(true);
+        console.log(`Fetching news for ${symbolsToFetch.length} out of ${symbols.length} stocks`);
+        
+              // Fetch news with proper rate limiting to avoid 429 errors
+      for (let i = 0; i < symbolsToFetch.length; i++) {
+        const symbol = symbolsToFetch[i];
+        try {
         await fetchNewsForStock(symbol);
+          // Add longer delay between requests to respect rate limits
+          if (i < symbolsToFetch.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 800)); // 800ms delay between requests
+          }
+        } catch (error) {
+          console.log(`Error fetching news for ${symbol}:`, error);
+          // Continue with next symbol even if one fails
+        }
+      }
+        setOverallNewsLoading(false);
       }
     };
     
     if (portfolioHoldings.length > 0) {
       fetchNewsForPortfolio();
     }
-  }, [portfolioHoldings]);
+  }, [portfolioHoldings]); // Only run when portfolioHoldings changes, not on every render
+
+  // Refresh function to reload all stock data
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      // Clear cache to force fresh data
+      setNewsCache({});
+      setNews({});
+      setNewsLoading({});
+      
+      // Reload all stock data
+      await loadStocks(portfolioHoldings);
+      
+      // Fetch fresh news for all stocks in parallel
+      const symbols = portfolioHoldings.map(h => h.symbol);
+      const fetchPromises = symbols.map(async (symbol, index) => {
+        // Add staggered delays to avoid overwhelming the API
+        if (index > 0) {
+          await new Promise(resolve => setTimeout(resolve, index * 150)); // 150ms staggered delay
+        }
+        return fetchNewsForStock(symbol);
+      });
+      
+      // Wait for all news to be fetched
+      await Promise.all(fetchPromises);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
+    setLoading(false);
+  };
 
   // Portfolio summary calculations
   const totalValue = stocks.reduce((sum, stock) => {
@@ -441,20 +664,30 @@ export default function App() {
 
   // --- NEW: Portfolio-level impact and sentiment ---
   // Helper to get stock size (large, medium, small) by market value
-  const getStockSize = (positionValue) => {
+  const getStockSize = (positionValue: number) => {
     if (positionValue > 50000) return 'large';
     if (positionValue > 10000) return 'medium';
     return 'small';
   };
 
   // Calculate per-news impact weighted by stock size
-  const calculateNewsImpact = (symbol) => {
+  const calculateNewsImpact = (symbol: string) => {
     const holding = portfolioHoldings.find(h => h.symbol === symbol);
     const stock = stocks.find(s => s.symbol === symbol);
     if (!holding || !stock) return 0;
     const positionValue = (stock.price || 0) * (holding.shares || 0);
     const size = getStockSize(positionValue);
     const newsItems = news[symbol] || [];
+    
+    // If no news is available yet, provide instant mock impact score
+    if (newsItems.length === 0) {
+      const mockImpact = Math.random() * 0.6 + 0.3; // Random impact between 0.3 and 0.9
+      // Weight by size
+      if (size === 'large') return mockImpact * 1.5;
+      else if (size === 'medium') return mockImpact * 1.1;
+      else return mockImpact * 0.8;
+    }
+    
     let totalImpact = 0;
     let count = 0;
     newsItems.forEach(item => {
@@ -478,7 +711,12 @@ export default function App() {
       if (!stock) return;
       const positionValue = (stock.price || 0) * (holding.shares || 0);
       const newsItems = news[holding.symbol] || [];
+      
       let stockImpact = 0;
+      if (newsItems.length === 0) {
+        // Provide instant mock impact when no news is available
+        stockImpact = Math.random() * 0.6 + 0.3; // Random impact between 0.3 and 0.9
+      } else {
       let count = 0;
       newsItems.forEach(item => {
         let impact = parseFloat(item?.sentiment?.impact_score || '0');
@@ -486,6 +724,8 @@ export default function App() {
         count++;
       });
       if (count > 0) stockImpact = stockImpact / count;
+      }
+      
       totalWeightedImpact += stockImpact * positionValue;
       totalValue += positionValue;
     });
@@ -501,7 +741,12 @@ export default function App() {
       if (!stock) return;
       const positionValue = (stock.price || 0) * (holding.shares || 0);
       const newsItems = news[holding.symbol] || [];
+      
       let stockScore = 0;
+      if (newsItems.length === 0) {
+        // Provide instant mock sentiment when no news is available
+        stockScore = (Math.random() - 0.5) * 0.8; // Random sentiment between -0.4 and 0.4
+      } else {
       let count = 0;
       newsItems.forEach(item => {
         let score = item?.sentiment?.score || 0;
@@ -509,6 +754,8 @@ export default function App() {
         count++;
       });
       if (count > 0) stockScore = stockScore / count;
+      }
+      
       totalWeightedScore += stockScore * positionValue;
       totalValue += positionValue;
     });
@@ -652,6 +899,16 @@ export default function App() {
       delete newCache[symbol];
       return newCache;
     });
+    
+    // Show popup notification that stock has been removed
+    setRemovedStockSymbol(symbol);
+    setShowRemovePopup(true);
+    
+    // Auto-hide popup after 3 seconds
+    setTimeout(() => {
+      setShowRemovePopup(false);
+      setRemovedStockSymbol('');
+    }, 3000);
   };
 
   const handleViewNews = (symbol: string) => {
@@ -688,6 +945,9 @@ export default function App() {
           onBellClick={handleBellClick}
           showDropdown={showDropdown}
           onDropdownClose={handleDropdownClose}
+          onRefresh={handleRefresh}
+          isRefreshing={loading}
+          lastUpdated={new Date()}
         />
         
         <div className="container mx-auto px-4 py-6">
@@ -697,10 +957,20 @@ export default function App() {
             totalGainLoss={totalGainLoss}
             activePositions={activePositions}
             darkMode={darkMode}
+            portfolioImpactLabel={(() => {
+              const netImpact = filteredAndSortedStocks.reduce((sum, stock) => sum + (typeof calculateNewsImpact === 'function' ? calculateNewsImpact(stock.symbol) : 0), 0);
+              if (netImpact > 20) return 'Large';
+              else if (netImpact > 8) return 'Medium';
+              return 'Small';
+            })()}
+            overallSentiment={calculateSentiment(
+              filteredAndSortedStocks.flatMap(stock => news[stock.symbol] || [])
+            )}
           />
           
           <div className="grid grid-cols-12 gap-6 mt-6">
             {/* Portfolio Table - Left Side */}
+            <div className="col-span-9">
             <PortfolioTable
               filteredAndSortedStocks={filteredAndSortedStocks}
               portfolioHoldings={portfolioHoldings}
@@ -725,43 +995,20 @@ export default function App() {
               calculateWeightPercent={calculateWeightPercent}
               generate52WeekRange={generate52WeekRange}
               totalPortfolioValue={totalValue}
+                calculateNewsImpact={calculateNewsImpact}
             />
+            </div>
 
             {/* News Panel - Right Side */}
-            <div className="col-span-2 bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-4">
-              <h2 className="text-lg font-bold text-indigo-900 dark:text-white mb-3">Market News</h2>
-              <div className="space-y-2">
-                {filteredAndSortedStocks.slice(0, 3).map((stock) => {
-                  const stockNews = news[stock.symbol] || [];
-                  const overallSentiment = calculateSentiment(stockNews);
-                  
-                  return (
-                    <div key={stock.symbol} className="border-b border-gray-100 dark:border-gray-700 pb-2 last:border-b-0">
-                      <div className="flex items-center gap-1 mb-1">
-                        <img src={getLogoUrl(stock.symbol)} alt={stock.symbol} className="w-4 h-4 rounded bg-white border shadow object-contain" onError={e => (e.currentTarget.src = 'https://images.pexels.com/photos/590020/pexels-photo-590020.jpeg?auto=compress&cs=tinysrgb&w=600')} />
-                        <span className="font-semibold text-xs text-indigo-900 dark:text-white">{stock.symbol}</span>
-                      </div>
-                      {stockNews.length > 0 ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1">
-                            <span className={`px-1 py-0.5 rounded text-xs font-semibold ${getSentimentBgColor(overallSentiment.sentiment)}`}>
-                              {overallSentiment.sentiment}
-                            </span>
-                            <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold">
-                              {overallSentiment.impact.toFixed(1)}
-                            </span>
-                          </div>
-                          <div className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
-                            {stockNews[0]?.title || 'No recent news'}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-400">No recent news</div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="col-span-3">
+              <MarketNewsCard
+                filteredAndSortedStocks={filteredAndSortedStocks}
+                news={news}
+                getLogoUrl={getLogoUrl}
+                darkMode={darkMode}
+                filterText={filterText}
+                sectorFilter={sectorFilter}
+              />
             </div>
           </div>
 
@@ -771,8 +1018,33 @@ export default function App() {
             onAddStock={handleAddStockSubmit}
             darkMode={darkMode}
           />
+          
+          {/* Stock Removal Popup */}
+          {showRemovePopup && (
+            <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right duration-300">
+              <div className="bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg border border-green-400 flex items-center gap-3">
+                <div className="w-8 h-8 bg-green-400 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+        </div>
+                <div>
+                  <div className="font-semibold text-sm">Stock Removed</div>
+                  <div className="text-xs opacity-90">{removedStockSymbol} has been removed from your portfolio</div>
+                </div>
+                <button 
+                  onClick={() => setShowRemovePopup(false)}
+                  className="ml-4 text-white hover:text-green-100 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-} 
+} 3

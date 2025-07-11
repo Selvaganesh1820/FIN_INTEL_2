@@ -4,12 +4,12 @@ import axios from 'axios';
 // Current implementation uses available APIs; consider scraping or using alternative APIs for more comprehensive news coverage.
 
 // Using Alpha Vantage API (free tier: 25 requests per day)
-export const API_KEY = 'XE820FF3LWH9QI4E'; // Using demo key for development
+export const API_KEY = '8QEVTP2KLH0P7FXP'; // Using demo key for development
 const BASE_URL = 'https://www.alphavantage.co/query';
 
 // Fallback to Finnhub API if Alpha Vantage fails
 // const FINNHUB_API_KEY = 'd1e3ff9r01qlt46scf40d1e3ff9r01qlt46scf4g'; // Selva demo key
-const FINNHUB_API_KEY = 'd1eeu2hr01qjssrjma80d1eeu2hr01qjssrjma8g'; // Tausi demo key
+const FINNHUB_API_KEY = 'd1o9vm1r01qtrav026vgd1o9vm1r01qtrav02700'; // Sellu demo key
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
 
 export interface StockData {
