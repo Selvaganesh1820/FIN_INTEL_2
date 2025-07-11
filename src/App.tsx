@@ -177,6 +177,34 @@ export default function App() {
     // eslint-disable-next-line
   }, [stocks, lastNotificationTime, notifiedStocks]);
 
+  // --- Persistent News Cache ---
+  // On mount, load news cache from localStorage
+  useEffect(() => {
+    const cached = localStorage.getItem('newsCacheV2');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        // Set both newsCache and news state from cache
+        setNewsCache(parsed);
+        // Flatten to news state for instant display
+        const newsObj = Object.fromEntries(
+          Object.entries(parsed).map(([symbol, val]) => [symbol, (val as { news: any[] }).news])
+        );
+        setNews(newsObj);
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }, []);
+
+  // Whenever newsCache changes, save to localStorage
+  useEffect(() => {
+    // Only save if newsCache is not empty
+    if (Object.keys(newsCache).length > 0) {
+      localStorage.setItem('newsCacheV2', JSON.stringify(newsCache));
+    }
+  }, [newsCache]);
+
   // Core functions
   async function loadStocks(holdings: Holding[]) {
     setLoading(true);
